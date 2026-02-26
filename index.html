@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Neurotools</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --surface: #111827;
+      --surface-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --accent-2: #3b82f6;
+      --border: #374151;
+      --shadow: 0 10px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at top, #111c3c, var(--bg) 45%);
+      color: var(--text);
+      padding: 2rem 1rem 4rem;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      margin-top: 0.6rem;
+      color: var(--muted);
+      max-width: 66ch;
+      line-height: 1.5;
+    }
+
+    .hint {
+      margin-top: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.65rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: rgba(17, 24, 39, 0.6);
+      font-size: 0.9rem;
+    }
+
+    .hint kbd {
+      font: inherit;
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: 0.35rem;
+      padding: 0.05rem 0.4rem;
+      color: var(--text);
+      background: #0b1227;
+    }
+
+    .tools {
+      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .tool-card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(31, 41, 55, 0.92), rgba(17, 24, 39, 0.95));
+      border-radius: 0.9rem;
+      padding: 1rem;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .tool-card:hover,
+    .tool-card:focus-visible {
+      transform: translateY(-2px);
+      border-color: var(--accent-2);
+      box-shadow: var(--shadow);
+      outline: none;
+    }
+
+    .tool-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 650;
+    }
+
+    .tool-path {
+      margin: 0.55rem 0 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      word-break: break-word;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.55);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 12vh 1rem 2rem;
+      z-index: 10;
+    }
+
+    .overlay.open { display: flex; }
+
+    .spotlight {
+      width: min(700px, 100%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    #searchInput {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 1.15rem;
+      padding: 1rem 1.1rem;
+      outline: none;
+    }
+
+    .results {
+      max-height: 50vh;
+      overflow: auto;
+    }
+
+    .result-item {
+      width: 100%;
+      text-align: left;
+      border: 0;
+      border-bottom: 1px solid #263142;
+      background: transparent;
+      color: var(--text);
+      padding: 0.8rem 1.1rem;
+      cursor: pointer;
+    }
+
+    .result-item:last-child { border-bottom: 0; }
+
+    .result-item.active,
+    .result-item:hover {
+      background: var(--surface-2);
+    }
+
+    .result-name {
+      display: block;
+      font-size: 0.98rem;
+      font-weight: 620;
+      margin-bottom: 0.25rem;
+    }
+
+    .result-path {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .empty {
+      padding: 1rem 1.1rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Neurotools</h1>
+    <p class="subtitle">
+      Quick index of all tools in this repository. Browse below, or just start typing anywhere to open Spotlight search and jump directly to a tool.
+    </p>
+    <div class="hint" aria-hidden="true">
+      <span>Open search:</span>
+      <kbd>/</kbd>
+      <span>or</span>
+      <kbd>⌘</kbd><span>+</span><kbd>K</kbd>
+      <span> / </span>
+      <kbd>Ctrl</kbd><span>+</span><kbd>K</kbd>
+    </div>
+
+    <section id="toolList" class="tools" aria-label="All tools"></section>
+  </main>
+
+  <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-label="Tool search">
+    <div class="spotlight">
+      <input id="searchInput" type="text" autocomplete="off" spellcheck="false" placeholder="Search tools…" />
+      <div id="results" class="results"></div>
+    </div>
+  </div>
+
+  <script>
+    const tools = [
+      { name: 'Diagnoseliste Formatter', path: 'Diagnoseliste-Formatter/kisim_diagnoseliste_formatter v1.html' },
+      { name: 'EMU ToDo', path: 'EMU-ToDo/index.html' },
+      { name: 'MDS-UPDRS Scale', path: 'Scales/MDS-UPDRS-v1.html' },
+      { name: 'Facial Nerve Grading Scale', path: 'Scales/Facial Nerve Grading Scale v1.html' },
+      { name: 'Neurokons', path: 'Neurokons/Neurokons V4.4.html' },
+      { name: 'Neurokons Manager', path: 'Neurokons/Neurokons-Manager.html' },
+      { name: 'Mark Offline Markdown Editor', path: 'mark-offline-markdown-editor-v2/mark-feature-editor-enhancements/mark-editor latest.html' }
+    ];
+
+    const listEl = document.getElementById('toolList');
+    const overlayEl = document.getElementById('overlay');
+    const inputEl = document.getElementById('searchInput');
+    const resultsEl = document.getElementById('results');
+
+    let filteredTools = [...tools];
+    let activeIndex = 0;
+
+    function renderToolCards() {
+      listEl.innerHTML = tools
+        .map(tool => `
+          <a class="tool-card" href="${tool.path}">
+            <h2 class="tool-title">${tool.name}</h2>
+            <p class="tool-path">${tool.path}</p>
+          </a>
+        `)
+        .join('');
+    }
+
+    function renderResults() {
+      if (filteredTools.length === 0) {
+        resultsEl.innerHTML = '<div class="empty">No tools match your search.</div>';
+        return;
+      }
+
+      resultsEl.innerHTML = filteredTools
+        .map((tool, index) => `
+          <button class="result-item ${index === activeIndex ? 'active' : ''}" data-index="${index}" type="button">
+            <span class="result-name">${tool.name}</span>
+            <span class="result-path">${tool.path}</span>
+          </button>
+        `)
+        .join('');
+    }
+
+    function openSearch(initialText = '') {
+      overlayEl.classList.add('open');
+      inputEl.value = initialText;
+      filterResults();
+      requestAnimationFrame(() => inputEl.focus());
+    }
+
+    function closeSearch() {
+      overlayEl.classList.remove('open');
+      inputEl.value = '';
+      filteredTools = [...tools];
+      activeIndex = 0;
+      renderResults();
+    }
+
+    function filterResults() {
+      const query = inputEl.value.trim().toLowerCase();
+      filteredTools = tools.filter(({ name, path }) =>
+        name.toLowerCase().includes(query) || path.toLowerCase().includes(query)
+      );
+      activeIndex = 0;
+      renderResults();
+    }
+
+    function goToActiveResult() {
+      if (!filteredTools.length) return;
+      window.location.href = filteredTools[activeIndex].path;
+    }
+
+    document.addEventListener('keydown', (event) => {
+      const commandK = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
+      const slash = event.key === '/';
+      const isCharacter = event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
+
+      if (commandK || slash) {
+        event.preventDefault();
+        openSearch();
+        return;
+      }
+
+      if (!overlayEl.classList.contains('open') && isCharacter) {
+        openSearch(event.key);
+        return;
+      }
+
+      if (!overlayEl.classList.contains('open')) return;
+
+      if (event.key === 'Escape') {
+        closeSearch();
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (!filteredTools.length) return;
+        activeIndex = (activeIndex + 1) % filteredTools.length;
+        renderResults();
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (!filteredTools.length) return;
+        activeIndex = (activeIndex - 1 + filteredTools.length) % filteredTools.length;
+        renderResults();
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        goToActiveResult();
+      }
+    });
+
+    overlayEl.addEventListener('click', (event) => {
+      if (event.target === overlayEl) closeSearch();
+    });
+
+    inputEl.addEventListener('input', filterResults);
+
+    resultsEl.addEventListener('click', (event) => {
+      const button = event.target.closest('.result-item');
+      if (!button) return;
+      const index = Number(button.dataset.index);
+      if (Number.isNaN(index)) return;
+      window.location.href = filteredTools[index].path;
+    });
+
+    renderToolCards();
+    renderResults();
+  </script>
+</body>
+</html>
