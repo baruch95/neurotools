@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist EMU</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>EMU Checklist</h1>
+        <div class="global-controls">
+            <button id="addNewWeekButton">Neue Woche hinzufügen</button>
+            <button id="saveAllDataButton">Alle Daten speichern (localStorage)</button>
+            <button id="downloadDataButton">Alle Daten herunterladen (Backup)</button>
+            <label for="uploadDataInput" class="button-like-label">Alle Daten hochladen (Restore)
+                <input type="file" id="uploadDataInput" accept=".json" style="display: none;">
+            </label>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <section id="generalNotesSection">
+            <h2>To-Do & Notizen</h2>
+            <div class="general-content-container">
+                <div class="general-todos-container">
+                    <h3>To-Do</h3>
+                    <ul id="generalTodoList" class="task-list general-task-list">
+                        <!-- General todos will be rendered here -->
+                    </ul>
+                    <div class="add-todo-container">
+                        <input type="text" id="addTodoInput" placeholder="Neues To-Do hinzufügen...">
+                        <button id="addTodoButton">To-Do hinzufügen</button>
+                    </div>
+                </div>
+                <div class="general-notes-container">
+                    <h3>Notizen</h3>
+                    <textarea id="generalNotesTextarea" placeholder="Allgemeine Notizen hier eingeben..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <section id="overviewSection">
+            <h2>Wochenübersicht</h2>
+            <div id="overviewContent">
+                <!-- Overview will be rendered here by JS -->
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <section id="currentWeekSection">
+            <h2>Woche Details</h2>
+            <div class="week-selector-container">
+                <label for="weekSelector">Woche auswählen:</label>
+                <select id="weekSelector">
+                    <option value="">-- Keine Woche ausgewählt --</option>
+                    <!-- Options will be populated by JS -->
+                </select>
+                <input type="text" id="currentWeekNumberInput" placeholder="Wochen Nr." size="10">
+                <button id="deleteWeekButton" class="danger-button">Diese Woche löschen</button>
+            </div>
+
+            <div id="currentWeekContent" style="display: none;"> <!-- Hidden until a week is selected -->
+                <div class="patient-details-container">
+                    <div class="patient-column-editor">
+                        Patient 1 Name: <input type="text" id="patient1NameInput" class="patient-name-input">
+                        <ul id="pat1Tasks" class="task-list"></ul>
+                    </div>
+                    <div class="patient-column-editor">
+                        Patient 2 Name: <input type="text" id="patient2NameInput" class="patient-name-input">
+                        <ul id="pat2Tasks" class="task-list"></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

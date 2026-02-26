@@ -1,0 +1,948 @@
+<!-- START OF FILE Neurokons v4.4.html -->
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neurokons v4.4</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --sidebar-bg: #e9ecef;
+            --border-color: #dee2e6;
+            --primary: #007bff;
+            --primary-hover: #0056b3;
+            --text-color: #212529;
+            --danger: #dc3545;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            line-height: 1.6; 
+            margin: 0; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* LAYOUT: 2 Columns */
+        .app-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden; 
+        }
+
+        /* SIDEBAR (Textbausteine) */
+        .sidebar {
+            width: 320px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header { margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+        .sidebar-scroll { flex-grow: 1; overflow-y: auto; padding-right: 5px; }
+        .sidebar-footer { margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px; background: var(--sidebar-bg); }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto; 
+            max-width: 900px; 
+            margin: 0 auto; 
+        }
+
+        h1, h2, h3 { font-family: serif; margin-top: 0; }
+        h1 { font-size: 1.5rem; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
+        h4 { margin: 0 0 5px 0; font-size: 1em; }
+
+        .section { margin-bottom: 20px; border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; background-color: #fff; }
+        
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
+        input[type="text"], textarea, select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
+        
+        textarea { resize: vertical; min-height: 50px; overflow-y: hidden; }
+        
+        button { background-color: var(--primary); color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-right: 5px; margin-bottom: 5px; }
+        button:hover { background-color: var(--primary-hover); }
+        button.danger { background-color: var(--danger); }
+        button.danger:hover { background-color: #c82333; }
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #5a6268; }
+        button.icon-btn { padding: 4px 8px; font-size: 0.85em; margin: 0; }
+
+        /* New Copy Button Style */
+        .btn-copy { background-color: #17a2b8; color: white; }
+        .btn-copy:hover { background-color: #138496; }
+
+        /* Category Controls */
+        .cat-controls { display: flex; gap: 5px; margin-bottom: 10px; }
+        .cat-controls select { margin-bottom: 0; flex-grow: 1; }
+
+        /* SNIPPET STYLES */
+        .snippet-list { display: flex; flex-direction: column; gap: 6px; }
+        .snippet-item { 
+            background: white; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            padding: 8px; 
+            display: flex; 
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .snippet-item:hover { background: #f1f3f5; border-color: #adb5bd; }
+        
+        /* The clickable title area */
+        .snippet-content-area { 
+            flex-grow: 1; 
+            cursor: pointer; 
+            overflow: hidden;
+            margin-right: 5px;
+        }
+        .snippet-title { font-weight: bold; font-size: 0.9em; display: block; }
+        .snippet-preview { font-size: 0.75em; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+
+        .snippet-actions { display: flex; gap: 2px; flex-shrink: 0; }
+        .btn-edit { background-color: #ffc107; color: #212529; }
+        .btn-edit:hover { background-color: #e0a800; }
+
+        /* Form for adding snippets */
+        .snippet-add-box { background: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        .snippet-add-box input, .snippet-add-box textarea { font-size: 0.9em; margin-bottom: 5px; }
+
+        /* Output & Notifications */
+        #outputText { white-space: pre-wrap; background-color: #e9ecef; padding: 15px; border: 1px solid #ced4da; border-radius: 5px; font-family: "Courier New", Courier, monospace; }
+        .notification { display: inline-block; margin-left: 10px; color: #28a745; font-weight: bold; opacity: 0; transition: opacity 0.5s; }
+        .favorites-container { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 5px; }
+        .favorite-item { display: flex; align-items: center; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 3px; }
+
+        /* Global Toast Notification */
+        #globalToast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .app-layout { flex-direction: column-reverse; overflow: auto; }
+            .sidebar { width: 100%; height: 350px; border-right: none; border-top: 1px solid #ccc; }
+            .main-content { padding: 10px; }
+        }
+
+        /* Persistent highlight while a [...] block is "focused" */
+        textarea.bracket-focus::selection {
+        background: rgba(255, 193, 7, 0.55);
+        }
+        textarea.bracket-focus::-moz-selection {
+        background: rgba(255, 193, 7, 0.55);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-layout">
+        
+        <!-- SIDEBAR: TEXTBAUSTEINE -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>Textbausteine</h3>
+                <div class="cat-controls">
+                    <select id="categorySelect" onchange="switchCategory()"></select>
+                    <button class="icon-btn secondary" onclick="addCategory()" title="Kategorie hinzufügen">+</button>
+                    <button class="icon-btn danger" onclick="deleteCategory()" title="Kategorie löschen">&times;</button>
+                </div>
+            </div>
+
+            <div class="sidebar-scroll">
+                <div id="snippetList" class="snippet-list">
+                    <!-- Snippets generated via JS -->
+                </div>
+                <p id="emptyCatMsg" style="text-align:center; color:#999; font-size:0.8em; display:none;">Kategorie leer</p>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="snippet-add-box">
+                    <h4 style="font-size: 0.85em;">Neuen Baustein erstellen</h4>
+                    <input type="text" id="newSnippetTitle" placeholder="Titel (z.B. Normalbefund)">
+                    <textarea id="newSnippetContent" rows="2" placeholder="Inhalt (Text der eingefügt wird)"></textarea>
+                    <button onclick="addSnippet()" style="width:100%">+ Hinzufügen</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <h1>Neurokons v4.4</h1>
+
+            <div class="section">
+                <h2>Patientenverwaltung</h2>
+                <select id="patientSelect"></select>
+                <div style="margin-top: 10px;">
+                    <button onclick="addNewPatient()">Neuer Patient</button>
+                    <button class="secondary" onclick="renameCurrentPatient()">Umbenennen</button>
+                    <button class="secondary" onclick="copyCurrentPatient()">Kopieren</button>
+                    <button class="danger" onclick="deleteCurrentPatient()">Löschen</button>
+                </div>
+                <hr style="margin: 20px 0;">
+                <button class="secondary" onclick="exportData()">Daten exportieren</button>
+                <label for="importFile" class="secondary button" style="cursor:pointer; display:inline-block; margin-bottom:0;">Importieren</label>
+                <input type="file" id="importFile" style="display: none;" accept=".json">
+            </div>
+            
+            <div id="mainContent" style="display: none;">
+                <div class="section">
+                    <h2>Vorlagen-Management</h2>
+                    <input type="text" id="favoriteTitle" placeholder="Titel der Formular-Vorlage">
+                    <button onclick="saveFormFavorite()">Struktur speichern</button>
+                    <button class="secondary" onclick="downloadStructure()">Download .md</button>
+                    <div id="favoritesContainer" class="favorites-container"></div>
+                </div>
+
+                <div class="section">
+                    <h2>Formular-Generator</h2>
+                    <textarea id="templateArea" rows="4" placeholder="## Anamnese&#10;- Hauptbeschwerde: []"></textarea>
+                    <button onclick="generateFormFromTemplate()">Erstellen</button>
+                    <span id="parseNotification" class="notification"></span>
+                </div>
+
+                <div class="section">
+                    <h2 id="formHeader">Patientendaten</h2>
+                    <div id="dynamicFormContainer"><p>Wählen Sie einen Patienten aus.</p></div>
+                </div>
+
+                <div class="section">
+                    <h2>Instruktionen für Bericht</h2>
+                    <textarea id="instructionsArea" rows="4" placeholder="z.B. Fasse zusammen..."></textarea>
+                    <div style="margin-top: 15px;">
+                        <input type="text" id="instructionFavoriteTitle" placeholder="Titel der Vorlage">
+                        <button onclick="saveInstructionFavorite()">Instruktion speichern</button>
+                        <div id="instructionFavoritesContainer" class="favorites-container"></div>
+                    </div>
+                </div>
+
+                <button onclick="generateReportText()" style="font-size: 1.1em; padding: 12px 20px;">Bericht generieren</button>
+                <div id="outputContainer" class="section" style="display:none; margin-top:20px;">
+                    <h2>Generierter Bericht</h2>
+                    <button onclick="copyToClipboard()">Text kopieren</button>
+                    <pre id="outputText"></pre>
+                    <span id="copyNotification" class="notification">Kopiert!</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Global Notification Toast -->
+    <div id="globalToast"></div>
+
+    <script>
+        // --- GLOBAL STATE ---
+        let patients = {};
+        let currentPatientId = null;
+        let formFavorites = [];
+        let instructionFavorites = [];
+        
+        let snippetData = {
+            "Allgemein": [
+                { title: "o.B.", content: "o.B." },
+                { title: "Pat. berichtet", content: "Der Patient berichtet über " }
+            ],
+            "Medikation": [
+                { title: "Keine", content: "Keine Dauermedikation." },
+                { title: "Liste", content: "Medikation: " }
+            ]
+        };
+        let currentCategory = "Allgemein";
+
+        let lastActiveElement = null; 
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            renderFormFavorites();
+            renderInstructionFavorites();
+            renderCategorySelect();
+            renderSnippets();
+            updatePatientSelect();
+            setupEventListeners();
+        });
+        
+        function setupEventListeners() {
+            document.getElementById('patientSelect').addEventListener('change', (e) => switchPatient(e.target.value));
+            
+            const instrArea = document.getElementById('instructionsArea');
+            instrArea.addEventListener('input', (e) => {
+                if (currentPatientId) {
+                    patients[currentPatientId].instructions = e.target.value;
+                    autoResizeTextarea(e.target);
+                    saveState();
+                }
+            });
+            // Track cursor focus
+            instrArea.addEventListener('focus', () => { lastActiveElement = instrArea; });
+            instrArea.addEventListener('click', () => { lastActiveElement = instrArea; });
+
+            document.getElementById('importFile').addEventListener('change', handleImport);
+            
+            const tmplArea = document.getElementById('templateArea');
+            tmplArea.addEventListener('focus', () => { lastActiveElement = tmplArea; });
+        }
+
+        function saveState() {
+            localStorage.setItem('dynamicMarkdownStateV9_Patients', JSON.stringify({ patients, currentPatientId }));
+            localStorage.setItem('dynamicMarkdownStateV9_FormFavorites', JSON.stringify(formFavorites));
+            localStorage.setItem('dynamicMarkdownStateV9_InstructionFavorites', JSON.stringify(instructionFavorites));
+            localStorage.setItem('dynamicMarkdownStateV9_SnippetsV4', JSON.stringify(snippetData));
+        }
+
+        function loadState() {
+            const patientState = JSON.parse(localStorage.getItem('dynamicMarkdownStateV9_Patients'));
+            if (patientState) { patients = patientState.patients || {}; currentPatientId = patientState.currentPatientId || null; }
+            formFavorites = JSON.parse(localStorage.getItem('dynamicMarkdownStateV9_FormFavorites')) || [];
+            instructionFavorites = JSON.parse(localStorage.getItem('dynamicMarkdownStateV9_InstructionFavorites')) || [];
+            
+            const v4Snippets = JSON.parse(localStorage.getItem('dynamicMarkdownStateV9_SnippetsV4'));
+            if (v4Snippets) {
+                snippetData = v4Snippets;
+            } else {
+                const v3Snippets = JSON.parse(localStorage.getItem('dynamicMarkdownStateV9_Snippets'));
+                if (Array.isArray(v3Snippets)) {
+                    snippetData["Allgemein"] = v3Snippets.map(txt => ({ 
+                        title: txt.length > 20 ? txt.substring(0,20)+"..." : txt, 
+                        content: txt 
+                    }));
+                }
+            }
+            
+            const cats = Object.keys(snippetData);
+            if (cats.length === 0) { snippetData["Allgemein"] = []; currentCategory = "Allgemein"; }
+            else if (!snippetData[currentCategory]) { currentCategory = cats[0]; }
+        }
+
+        function autoResizeTextarea(element) {
+            element.style.height = 'auto';
+            element.style.height = `${element.scrollHeight}px`;
+        }
+
+        // --- CATEGORY LOGIC ---
+        function renderCategorySelect() {
+            const select = document.getElementById('categorySelect');
+            select.innerHTML = '';
+            Object.keys(snippetData).forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                select.appendChild(opt);
+            });
+            select.value = currentCategory;
+        }
+
+        function switchCategory() {
+            currentCategory = document.getElementById('categorySelect').value;
+            renderSnippets();
+        }
+
+        function addCategory() {
+            const name = prompt("Name der neuen Kategorie:");
+            if (!name) return;
+            if (snippetData[name]) { alert("Kategorie existiert bereits."); return; }
+            snippetData[name] = [];
+            currentCategory = name;
+            saveState();
+            renderCategorySelect();
+            renderSnippets();
+        }
+
+        function deleteCategory() {
+            if (Object.keys(snippetData).length <= 1) { alert("Mindestens eine Kategorie muss bleiben."); return; }
+            if (!confirm(`Kategorie "${currentCategory}" und alle enthaltenen Bausteine löschen?`)) return;
+            delete snippetData[currentCategory];
+            currentCategory = Object.keys(snippetData)[0];
+            saveState();
+            renderCategorySelect();
+            renderSnippets();
+        }
+
+        // --- SNIPPET LOGIC ---
+        function renderSnippets() {
+            const container = document.getElementById('snippetList');
+            container.innerHTML = '';
+            const snippets = snippetData[currentCategory] || [];
+            
+            document.getElementById('emptyCatMsg').style.display = snippets.length === 0 ? 'block' : 'none';
+
+            snippets.forEach((snip, index) => {
+                const div = document.createElement('div');
+                div.className = 'snippet-item';
+                // Prevent insert when clicking buttons
+                div.onmousedown = (e) => { 
+                    if(e.target.tagName !== 'BUTTON') {
+                        e.preventDefault(); 
+                        insertSnippet(snip.content); 
+                    }
+                };
+                
+                div.innerHTML = `
+                    <div class="snippet-content-area" title="${snip.content}">
+                        <span class="snippet-title">${snip.title}</span>
+                        <span class="snippet-preview">${snip.content}</span>
+                    </div>
+                    <div class="snippet-actions">
+                        <button class="icon-btn btn-copy" onclick="copySnippetToClipboard(${index})" title="In Zwischenablage kopieren">📋</button>
+                        <button class="icon-btn btn-edit" onclick="renameSnippet(${index})" title="Titel umbenennen">✎</button>
+                        <button class="icon-btn danger" onclick="deleteSnippet(${index})" title="Löschen">&times;</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function copySnippetToClipboard(index) {
+            const snip = snippetData[currentCategory][index];
+            if (!snip) return;
+
+            navigator.clipboard.writeText(snip.content).then(() => {
+                // Show the global toast notification
+                const toast = document.getElementById('globalToast');
+                toast.textContent = `"${snip.title}" kopiert!`;
+                toast.style.opacity = '1';
+                setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+            }).catch(err => {
+                console.error('Copy failed', err);
+                alert("Fehler beim Kopieren: " + err);
+            });
+        }
+
+        function addSnippet() {
+            const titleIn = document.getElementById('newSnippetTitle');
+            const contentIn = document.getElementById('newSnippetContent');
+            const title = titleIn.value.trim();
+            const content = contentIn.value.trim();
+
+            if(!title || !content) { alert("Titel und Inhalt erforderlich."); return; }
+
+            if (!snippetData[currentCategory]) snippetData[currentCategory] = [];
+            snippetData[currentCategory].push({ title, content });
+            
+            saveState();
+            renderSnippets();
+            titleIn.value = '';
+            contentIn.value = '';
+        }
+
+        function deleteSnippet(index) {
+            if(!confirm("Baustein löschen?")) return;
+            snippetData[currentCategory].splice(index, 1);
+            saveState();
+            renderSnippets();
+        }
+
+        function renameSnippet(index) {
+            const snip = snippetData[currentCategory][index];
+            const newTitle = prompt("Neuer Titel:", snip.title);
+            if (newTitle && newTitle.trim() !== "") {
+                snip.title = newTitle.trim();
+                saveState();
+                renderSnippets();
+            }
+        }
+
+        function insertSnippet(text) {
+            if (!lastActiveElement) {
+                alert("Bitte klicken Sie zuerst in ein Textfeld.");
+                return;
+            }
+            const start = lastActiveElement.selectionStart;
+            const end = lastActiveElement.selectionEnd;
+            const originalValue = lastActiveElement.value;
+            const newValue = originalValue.substring(0, start) + text + originalValue.substring(end);
+            lastActiveElement.value = newValue;
+            const newCursorPos = start + text.length;
+            lastActiveElement.setSelectionRange(newCursorPos, newCursorPos);
+            lastActiveElement.focus();
+            const event = new Event('input', { bubbles: true });
+            lastActiveElement.dispatchEvent(event);
+        }
+
+        // --- FORM LOGIC ---
+        function rebuildFormForCurrentPatient() {
+            const container = document.getElementById('dynamicFormContainer');
+            container.innerHTML = '';
+            const patient = patients[currentPatientId];
+            if (!patient || !patient.formModel || patient.formModel.length === 0) {
+                container.innerHTML = '<p>Keine Struktur vorhanden.</p>';
+                return;
+            }
+            
+            patient.formModel.forEach((item, index) => {
+                if (item.type === 'heading') {
+                    const heading = document.createElement(item.level === 2 ? 'h2' : 'h3');
+                    heading.textContent = item.content;
+                    container.appendChild(heading);
+                } else if (item.type === 'field') {
+                    const fieldWrapper = document.createElement('div');
+                    fieldWrapper.className = 'form-field';
+
+                    const label = document.createElement('label');
+                    label.textContent = item.label;
+                    
+                    const textarea = document.createElement('textarea');
+                    textarea.value = item.value;
+                    textarea.dataset.index = index;
+                    
+                    textarea.addEventListener('focus', () => { lastActiveElement = textarea; });
+                    textarea.addEventListener('click', () => { lastActiveElement = textarea; });
+
+                    textarea.addEventListener('input', (e) => {
+                        autoResizeTextarea(e.target);
+                        const modelIndex = parseInt(e.target.dataset.index, 10);
+                        patients[currentPatientId].formModel[modelIndex].value = e.target.value;
+                        saveState();
+                    });
+
+                    fieldWrapper.appendChild(label);
+                    fieldWrapper.appendChild(textarea);
+                    container.appendChild(fieldWrapper);
+                    autoResizeTextarea(textarea);
+                }
+            });
+        }
+        
+        function renderFormFavorites() { 
+            const container = document.getElementById('favoritesContainer'); 
+            container.innerHTML = '';
+            formFavorites.forEach((fav, index) => { 
+                const itemDiv = document.createElement('div'); itemDiv.className = 'favorite-item'; 
+                itemDiv.innerHTML = `<button class="favorite-load" onclick="loadFormFavorite(${index})">${fav.title}</button><button class="delete-btn icon-btn" onclick="deleteFormFavorite(${index})">&times;</button>`; 
+                container.appendChild(itemDiv); 
+            }); 
+        }
+
+        function saveFormFavorite() { 
+            const title = document.getElementById('favoriteTitle').value.trim(); 
+            if (!title || !currentPatientId) return; 
+            formFavorites.push({ title: title, model: JSON.parse(JSON.stringify(patients[currentPatientId].formModel)) }); 
+            saveState(); renderFormFavorites(); document.getElementById('favoriteTitle').value = ''; 
+        }
+
+        function loadFormFavorite(index) { 
+            if (!currentPatientId || !confirm("Struktur überschreiben?")) return; 
+            patients[currentPatientId].formModel = JSON.parse(JSON.stringify(formFavorites[index].model)); 
+            saveState(); rebuildFormForCurrentPatient(); 
+        }
+
+        function deleteFormFavorite(index) { if(confirm("Löschen?")) { formFavorites.splice(index, 1); saveState(); renderFormFavorites(); } }
+
+        function renderInstructionFavorites() { 
+            const container = document.getElementById('instructionFavoritesContainer'); 
+            container.innerHTML = ''; 
+            instructionFavorites.forEach((fav, index) => { 
+                const itemDiv = document.createElement('div'); itemDiv.className = 'favorite-item'; 
+                itemDiv.innerHTML = `<button class="favorite-load" onclick="loadInstructionFavorite(${index})">${fav.title}</button><button class="delete-btn icon-btn" onclick="deleteInstructionFavorite(${index})">&times;</button>`; 
+                container.appendChild(itemDiv); 
+            }); 
+        }
+
+        function saveInstructionFavorite() {
+            const title = document.getElementById('instructionFavoriteTitle').value.trim();
+            const text = document.getElementById('instructionsArea').value.trim();
+            if(!title || !text) return;
+            instructionFavorites.push({title, text});
+            saveState(); renderInstructionFavorites(); document.getElementById('instructionFavoriteTitle').value = '';
+        }
+
+        function loadInstructionFavorite(index) {
+            if(!currentPatientId) return;
+            patients[currentPatientId].instructions = instructionFavorites[index].text;
+            document.getElementById('instructionsArea').value = instructionFavorites[index].text;
+            autoResizeTextarea(document.getElementById('instructionsArea'));
+            saveState();
+        }
+        function deleteInstructionFavorite(index) { if(confirm("Löschen?")) { instructionFavorites.splice(index, 1); saveState(); renderInstructionFavorites(); } }
+
+        function downloadStructure() { 
+            if (!currentPatientId || !patients[currentPatientId].formModel) return; 
+            const model = patients[currentPatientId].formModel; 
+            const text = model.map(item => item.type === 'heading' ? '#'.repeat(item.level) + ' ' + item.content : `- ${item.label}: []`).join('\n\n');
+            const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' }); 
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'formular-vorlage.md'; a.click(); 
+        }
+
+        // --- PATIENT MANAGEMENT FUNCTIONS ---
+
+        function addNewPatient() { 
+            const id = prompt("Name/ID für neuen Patienten:"); 
+            if (!id) return;
+            if (patients[id]) {
+                alert("Ein Patient mit dieser ID existiert bereits.");
+                return;
+            }
+            patients[id] = { formModel: [], instructions: "" }; 
+            currentPatientId = id; 
+            saveState(); 
+            updatePatientSelect(); 
+        }
+
+        function renameCurrentPatient() { 
+            if (!currentPatientId) return; 
+            const newName = prompt("Neuer Name für Patienten:", currentPatientId); 
+            if (!newName || newName.trim() === "" || newName === currentPatientId) return;
+            
+            if (patients[newName]) { 
+                alert("Name existiert bereits."); 
+                return; 
+            }
+            
+            patients[newName] = patients[currentPatientId]; 
+            delete patients[currentPatientId]; 
+            currentPatientId = newName; 
+            saveState(); 
+            updatePatientSelect(); 
+        }
+
+        function copyCurrentPatient() { 
+            if (!currentPatientId) return; 
+            const newName = prompt("Name für die Kopie:", currentPatientId + " (Kopie)"); 
+            if (!newName || newName.trim() === "") return;
+            
+            if (patients[newName]) { 
+                alert("Name existiert bereits."); 
+                return; 
+            }
+            
+            // Deep copy of the patient data
+            patients[newName] = JSON.parse(JSON.stringify(patients[currentPatientId])); 
+            currentPatientId = newName; 
+            saveState(); 
+            updatePatientSelect(); 
+        }
+
+        function deleteCurrentPatient() { 
+            if (!currentPatientId) return;
+            if (confirm("Möchten Sie den Patienten " + currentPatientId + " wirklich löschen?")) { 
+                delete patients[currentPatientId]; 
+                currentPatientId = Object.keys(patients)[0] || null; 
+                saveState(); 
+                updatePatientSelect(); 
+            } 
+        }
+
+        function switchPatient(id) { 
+            currentPatientId = id; 
+            document.getElementById('formHeader').textContent = `Patientendaten: ${id}`; 
+            rebuildFormForCurrentPatient(); 
+            const instrArea = document.getElementById('instructionsArea');
+            instrArea.value = patients[currentPatientId]?.instructions || ''; 
+            autoResizeTextarea(instrArea);
+            saveState(); 
+        }
+
+        function updatePatientSelect() { 
+            const select = document.getElementById('patientSelect'); 
+            select.innerHTML = ''; 
+            const ids = Object.keys(patients); 
+            if (ids.length === 0) { 
+                select.disabled = true; 
+                document.getElementById('mainContent').style.display = 'none'; 
+            } else { 
+                select.disabled = false; 
+                document.getElementById('mainContent').style.display = 'block'; 
+                ids.forEach(id => { 
+                    const opt = document.createElement('option'); 
+                    opt.value = id; 
+                    opt.textContent = id; 
+                    select.appendChild(opt); 
+                }); 
+                if (!patients[currentPatientId]) currentPatientId = ids[0]; 
+                select.value = currentPatientId; 
+                switchPatient(currentPatientId); 
+            } 
+        }
+
+        function generateFormFromTemplate() {
+            if (!currentPatientId) return;
+            const lines = document.getElementById('templateArea').value.split('\n');
+            const newModel = [];
+            lines.forEach(line => {
+                const trim = line.trim();
+                if(!trim) return;
+                let m = trim.match(/^(##|###)\s+(.*)/);
+                if(m) newModel.push({ type: 'heading', level: m[1].length, content: m[2].trim() });
+                else {
+                    m = trim.match(/^\s*-\s*(.+?):\s*\[([\s\S]*?)\]\s*$/);
+                    if(m) newModel.push({ type: 'field', label: m[1].trim(), value: m[2] });
+                }
+            });
+            patients[currentPatientId].formModel = newModel;
+            saveState(); rebuildFormForCurrentPatient();
+        }
+
+        function generateReportText() {
+            if (!currentPatientId) return;
+            const p = patients[currentPatientId];
+            let report = p.formModel.map((item, i) => {
+                if(item.type === 'heading') return (i>0?'\n':'') + '#'.repeat(item.level) + ' ' + item.content.replace(/\\(\.)/g, '$1');
+                return `- ${item.label}: [${item.value}]`;
+            }).join('\n');
+            if(p.instructions) report += `\n\n---\n\n${p.instructions}`;
+            document.getElementById('outputText').textContent = report;
+            document.getElementById('outputContainer').style.display = 'block';
+        }
+
+        function copyToClipboard() { navigator.clipboard.writeText(document.getElementById('outputText').textContent).then(() => showNotification('copyNotification', 'Kopiert!')); }
+        function exportData() { 
+            const exportData = { patients, currentPatientId, snippetData };
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], {type:'application/json'}); 
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'neurokons-daten.json'; a.click(); 
+        }
+        function showNotification(id, msg) { const el = document.getElementById(id); if(msg) el.textContent = msg; el.style.opacity = '1'; setTimeout(() => el.style.opacity = '0', 2500); }
+
+        function handleImport(event) {
+            const file = event.target.files[0]; if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if(data.patients) {
+                        patients = { ...patients, ...data.patients };
+                        if(data.currentPatientId) currentPatientId = data.currentPatientId;
+                        if(data.snippetData) {
+                            snippetData = { ...snippetData, ...data.snippetData };
+                            if(!snippetData[currentCategory]) currentCategory = Object.keys(snippetData)[0] || "Allgemein";
+                        }
+                        saveState(); 
+                        updatePatientSelect();
+                        renderCategorySelect();
+                        renderSnippets();
+                        alert("Import erfolgreich");
+                    }
+                } catch(err) { alert("Import Fehler: " + err); }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+        // --- BRACKET NAVIGATION (TAB / SHIFT+TAB) + PERSISTENT HIGHLIGHT ---
+        // Behaviour:
+        // - Tab / Shift+Tab jumps between next/prev [...] token in the CURRENT textarea
+        // - Selection includes the brackets [ and ] (so typing overwrites them too)
+        // - Highlight stays until a "real" key press (typing/edit) happens
+        // - Enter = accept (keep) and jump next
+        // - Esc = cancel highlight
+
+        const BRACKET_FOCUS_CLASS = 'bracket-focus';
+
+        window.addEventListener('keydown', function (e) {
+            const ta = e.target;
+            if (!(ta instanceof HTMLTextAreaElement)) return;
+
+            const text = ta.value;
+
+            const isTab = (e.key === 'Tab') || (e.code === 'Tab');
+            if (isTab) {
+                // Only take over Tab if there is at least one [...] token in THIS textarea
+                if (!hasBracketToken(text)) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+
+                if (e.shiftKey) jumpToPrevBracketToken(ta);
+                else jumpToNextBracketToken(ta);
+                return;
+            }
+
+            // Enter = accept current [...] by removing brackets, keep content, then jump next
+            if (ta.classList.contains(BRACKET_FOCUS_CLASS) && e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+
+                acceptTokenRemoveBracketsAndJumpNext(ta);
+                return;
+            }
+
+            function acceptTokenRemoveBracketsAndJumpNext(textarea) {
+                const text = textarea.value;
+
+                let selStart = textarea.selectionStart ?? 0;
+                let selEnd = textarea.selectionEnd ?? selStart;
+
+                // 1) If the current selection already includes the full token [ ... ],
+                // use it directly (most reliable).
+                let leftBracket = -1;
+                let rightBracket = -1;
+
+                if (selEnd > selStart && text[selStart] === '[' && text[selEnd - 1] === ']') {
+                    leftBracket = selStart;
+                    rightBracket = selEnd - 1;
+                } else {
+                    // 2) Otherwise, expand selection/caret to nearest surrounding [ ... ]
+                    leftBracket = text.lastIndexOf('[', Math.max(0, selStart));
+                    if (leftBracket === -1) { clearBracketFocus(textarea); return; }
+
+                    rightBracket = text.indexOf(']', leftBracket + 1);
+                    if (rightBracket === -1) { clearBracketFocus(textarea); return; }
+                }
+
+                const inner = text.slice(leftBracket + 1, rightBracket);
+
+                // Replace [inner] with inner (remove BOTH brackets)
+                const before = text.slice(0, leftBracket);
+                const after = text.slice(rightBracket + 1);
+                textarea.value = before + inner + after;
+
+                // Place caret at end of the kept content
+                const newCaretPos = before.length + inner.length;
+                textarea.focus();
+                textarea.setSelectionRange(newCaretPos, newCaretPos);
+
+                // Trigger autosave/resize in your app
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+                clearBracketFocus(textarea);
+
+                // Jump to next token from new caret
+                jumpToNextBracketTokenFromPos(textarea, newCaretPos);
+            }
+
+
+            function jumpToNextBracketTokenFromPos(textarea, fromPos) {
+                const text = textarea.value;
+
+                let start = text.indexOf('[', fromPos);
+                if (start === -1) start = text.indexOf('[', 0); // wrap
+                if (start === -1) return;
+
+                const end = text.indexOf(']', start + 1);
+                if (end === -1) return;
+
+                setBracketFocus(textarea, start, end);
+            }
+            // Esc cancels highlight
+            if (ta.classList.contains(BRACKET_FOCUS_CLASS) && e.key === 'Escape') {
+                clearBracketFocus(ta);
+                return;
+            }
+        // Backspace while a full [...] token is selected: delete it, then jump next
+        if (ta.classList.contains(BRACKET_FOCUS_CLASS) && e.key === 'Backspace') {
+            const s = ta.selectionStart ?? 0;
+            const en = ta.selectionEnd ?? s;
+
+            // Only trigger if selection is exactly [ ... ] including brackets
+            if (en > s && ta.value[s] === '[' && ta.value[en - 1] === ']') {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+
+                const text = ta.value;
+                const before = text.slice(0, s);
+                const after = text.slice(en);
+                ta.value = before + after;
+
+                const newCaretPos = before.length;
+                ta.focus();
+                ta.setSelectionRange(newCaretPos, newCaretPos);
+
+                // Trigger autosave/resize in your app
+                ta.dispatchEvent(new Event('input', { bubbles: true }));
+
+                clearBracketFocus(ta);
+                jumpToNextBracketTokenFromPos(ta, newCaretPos);
+                return;
+            }
+        }
+            // Any real typing/edit should end the persistent highlight
+            if (ta.classList.contains(BRACKET_FOCUS_CLASS) && shouldClearFocusOnKey(e)) {
+                clearBracketFocus(ta);
+            }
+        }, true); // capture phase is important for Shift+Tab
+
+        function hasBracketToken(text) {
+            // minimal "token exists" check: finds a '[' followed by a later ']'
+            const i = text.indexOf('[');
+            if (i === -1) return false;
+            return text.indexOf(']', i + 1) !== -1;
+        }
+
+        function jumpToNextBracketToken(textarea) {
+            const text = textarea.value;
+            const pos = (textarea.selectionEnd ?? textarea.selectionStart ?? 0);
+
+            let start = text.indexOf('[', pos);
+            if (start === -1) start = text.indexOf('[', 0); // wrap
+            if (start === -1) return;
+
+            const end = text.indexOf(']', start + 1);
+            if (end === -1) return;
+
+            setBracketFocus(textarea, start, end);
+        }
+
+        function jumpToPrevBracketToken(textarea) {
+            const text = textarea.value;
+            const pos = (textarea.selectionStart ?? 0);
+
+            // look strictly before caret to avoid re-selecting same '['
+            let start = text.lastIndexOf('[', Math.max(0, pos - 1));
+            if (start === -1) start = text.lastIndexOf('[', text.length - 1); // wrap
+            if (start === -1) return;
+
+            const end = text.indexOf(']', start + 1);
+            if (end === -1) return;
+
+            setBracketFocus(textarea, start, end);
+        }
+
+        function setBracketFocus(textarea, bracketStart, bracketEnd) {
+            textarea.focus();
+
+            // SELECT INCLUDING BRACKETS so overwrite affects [ and ] too
+            const selStart = bracketStart;
+            const selEnd = bracketEnd + 1;
+
+            textarea.setSelectionRange(selStart, selEnd);
+            textarea.classList.add(BRACKET_FOCUS_CLASS);
+        }
+
+        function clearBracketFocus(textarea) {
+            textarea.classList.remove(BRACKET_FOCUS_CLASS);
+        }
+
+        function shouldClearFocusOnKey(e) {
+            // keep highlight for navigation/modifiers
+            if (e.ctrlKey || e.metaKey || e.altKey) return false;
+
+            const keepKeys = new Set([
+                'Shift','Control','Alt','Meta',
+                'ArrowLeft','ArrowRight','ArrowUp','ArrowDown',
+                'Home','End','PageUp','PageDown'
+            ]);
+            if (keepKeys.has(e.key)) return false;
+
+            // typing or editing keys clear it
+            if (e.key === 'Backspace' || e.key === 'Delete') return true;
+            if (e.key.length === 1) return true; // printable characters
+            return false;
+        }
+
+    </script>
+</body>
+</html>

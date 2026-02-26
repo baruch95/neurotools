@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FNGS 2.0 Assessor</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+            --text-color: #212529;
+            --border-color: #dee2e6;
+            --success-color: #28a745;
+            --result-bg: #e9ecef;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+            background: var(--card-background);
+            padding: 25px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 1.8em;
+        }
+        
+        h2 {
+            color: var(--text-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 5px;
+            margin-top: 25px;
+            font-size: 1.3em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        p.description {
+            text-align: center;
+            color: var(--secondary-color);
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            flex-basis: 60%;
+        }
+
+        select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 1em;
+            width: 150px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .button-group {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            flex-grow: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        #calculate-btn {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        #calculate-btn:hover {
+            background-color: #0056b3;
+        }
+
+        #reset-btn {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        #reset-btn:hover {
+            background-color: #5a6268;
+        }
+        
+        #results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: var(--result-bg);
+            border-left: 5px solid var(--success-color);
+            border-radius: 5px;
+            display: none; /* Initially hidden */
+        }
+
+        #results h2 {
+            margin-top: 0;
+            border-bottom: none;
+            color: var(--success-color);
+        }
+        
+        .result-item {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        
+        .result-item span {
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .grade-description {
+            font-style: italic;
+            color: var(--secondary-color);
+            margin-top: 15px;
+        }
+
+        /* --- NEW MODAL STYLES --- */
+        .info-icon {
+            font-size: 0.8em;
+            font-weight: bold;
+            background-color: var(--secondary-color);
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        .info-icon:hover {
+            background-color: var(--primary-color);
+        }
+
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            background-color: var(--card-background);
+            margin: 15% auto;
+            padding: 20px 30px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+            animation: slideIn 0.3s;
+        }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .modal-content ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .modal-content li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .modal-content li:last-child {
+            border-bottom: none;
+        }
+        .modal-content li strong {
+            color: var(--primary-color);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Facial Nerve Grading Scale 2.0</h1>
+        <p class="description">Select the score for each facial region and secondary defect to calculate the final FNGS 2.0 grade.</p>
+
+        <form id="fngs-form">
+            
+            <h2>
+                <span>Regional Score</span>
+                <span id="info-icon" class="info-icon" title="Click for score definitions">?</span>
+            </h2>
+            <div class="form-group">
+                <label for="rest">At Rest (Symmetry, Tone)</label>
+                <select id="rest" required>
+                    <option value="1">1 - Normal</option>
+                    <option value="2">2 - Mild</option>
+                    <option value="3">3 - Moderate</option>
+                    <option value="4">4 - Severe</option>
+                    <option value="5">5 - Paralysis</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="brow">Brow Elevation (Forehead)</label>
+                <select id="brow" required>
+                    <option value="1">1 - Normal</option>
+                    <option value="2">2 - Mild</option>
+                    <option value="3">3 - Moderate</option>
+                    <option value="4">4 - Severe</option>
+                    <option value="5">5 - Paralysis</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="eye">Gentle Eye Closure</label>
+                <select id="eye" required>
+                    <option value="1">1 - Normal</option>
+                    <option value="2">2 - Mild</option>
+                    <option value="3">3 - Moderate</option>
+                    <option value="4">4 - Severe</option>
+                    <option value="5">5 - Paralysis</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="smile">Open Mouth Smile</label>
+                <select id="smile" required>
+                    <option value="1">1 - Normal</option>
+                    <option value="2">2 - Mild</option>
+                    <option value="3">3 - Moderate</option>
+                    <option value="4">4 - Severe</option>
+                    <option value="5">5 - Paralysis</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="pucker">Pucker / Whistle</label>
+                <select id="pucker" required>
+                    <option value="1">1 - Normal</option>
+                    <option value="2">2 - Mild</option>
+                    <option value="3">3 - Moderate</option>
+                    <option value="4">4 - Severe</option>
+                    <option value="5">5 - Paralysis</option>
+                </select>
+            </div>
+
+            <h2>Secondary Defects</h2>
+            <div class="form-group">
+                <label for="synkinesis">Synkinesis</label>
+                <select id="synkinesis" required>
+                    <option value="None">None</option>
+                    <option value="Mild">Mild</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Severe">Severe</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="contracture">Contracture</label>
+                <select id="contracture" required>
+                    <option value="None">None</option>
+                    <option value="Mild">Mild</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Severe">Severe</option>
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" id="calculate-btn">Calculate Grade</button>
+                <button type="button" id="reset-btn">Reset</button>
+            </div>
+        </form>
+
+        <div id="results">
+            <h2>Assessment Results</h2>
+            <div class="result-item">Average Regional Score: <span id="avg-score"></span></div>
+            <div class="result-item">FNGS 2.0 Grade: <span id="final-grade"></span></div>
+            <p class="grade-description" id="grade-desc"></p>
+            <hr>
+            <div class="result-item">Synkinesis: <span id="synkinesis-result"></span></div>
+            <div class="result-item">Contracture: <span id="contracture-result"></span></div>
+        </div>
+
+    </div>
+
+    <!-- The Information Modal -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Regional Score Definitions</h3>
+            <ul>
+                <li><strong>1 - Normal:</strong> Symmetric function, identical to the contralateral side.</li>
+                <li><strong>2 - Mild Dysfunction:</strong> Obvious movement on careful inspection, slight asymmetry.</li>
+                <li><strong>3 - Moderate Dysfunction:</strong> Obvious asymmetry, but some movement is present.</li>
+                <li><strong>4 - Severe Dysfunction:</strong> Only a flicker of movement is detectable.</li>
+                <li><strong>5 - Paralysis:</strong> No movement.</li>
+            </ul>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('fngs-form');
+            const resetButton = document.getElementById('reset-btn');
+            const resultsDiv = document.getElementById('results');
+
+            // --- Calculation Logic ---
+            form.addEventListener('submit', function(e) {
+                e.preventDefault(); 
+                
+                const scores = [
+                    parseInt(document.getElementById('rest').value),
+                    parseInt(document.getElementById('brow').value),
+                    parseInt(document.getElementById('eye').value),
+                    parseInt(document.getElementById('smile').value),
+                    parseInt(document.getElementById('pucker').value)
+                ];
+                
+                const sum = scores.reduce((total, score) => total + score, 0);
+                const averageScore = sum / scores.length;
+
+                let finalGrade = '';
+                let gradeDescription = '';
+
+                if (averageScore === 1.0) {
+                    finalGrade = 'I';
+                    gradeDescription = 'Normal facial function in all areas.';
+                } else if (averageScore > 1.0 && averageScore <= 2.0) {
+                    finalGrade = 'II';
+                    gradeDescription = 'Mild Dysfunction: Slight weakness noticeable on close inspection; normal symmetry and tone at rest.';
+                } else if (averageScore > 2.0 && averageScore <= 3.0) {
+                    finalGrade = 'III';
+                    gradeDescription = 'Moderate Dysfunction: Obvious but not disfiguring weakness; noticeable synkinesis, contracture, or both.';
+                } else if (averageScore > 3.0 && averageScore <= 4.0) {
+                    finalGrade = 'IV';
+                    gradeDescription = 'Moderately Severe Dysfunction: Obvious and disfiguring weakness; normal symmetry and tone at rest.';
+                } else if (averageScore > 4.0 && averageScore < 5.0) {
+                    finalGrade = 'V';
+                    gradeDescription = 'Severe Dysfunction: Only barely perceptible motion; asymmetry at rest.';
+                } else if (averageScore === 5.0) {
+                    finalGrade = 'VI';
+                    gradeDescription = 'Total Paralysis: No movement.';
+                }
+
+                const synkinesis = document.getElementById('synkinesis').value;
+                const contracture = document.getElementById('contracture').value;
+
+                document.getElementById('avg-score').textContent = averageScore.toFixed(2);
+                document.getElementById('final-grade').textContent = finalGrade;
+                document.getElementById('grade-desc').textContent = gradeDescription;
+                document.getElementById('synkinesis-result').textContent = synkinesis;
+                document.getElementById('contracture-result').textContent = contracture;
+
+                resultsDiv.style.display = 'block';
+                resultsDiv.scrollIntoView({ behavior: 'smooth' });
+            });
+
+            // --- Reset Logic ---
+            resetButton.addEventListener('click', function() {
+                form.reset();
+                resultsDiv.style.display = 'none';
+            });
+            
+            // --- NEW MODAL LOGIC ---
+            const modal = document.getElementById('infoModal');
+            const infoIcon = document.getElementById('info-icon');
+            const closeButton = document.querySelector('.close-button');
+
+            // Open the modal
+            infoIcon.onclick = function() {
+                modal.style.display = "block";
+            }
+
+            // Close the modal with the 'x' button
+            closeButton.onclick = function() {
+                modal.style.display = "none";
+            }
+
+            // Close the modal if the user clicks outside of the content
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+            
+            // Close the modal with the 'Escape' key
+            window.onkeydown = function(event) {
+                if (event.key === "Escape") {
+                    modal.style.display = "none";
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>

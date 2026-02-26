@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KISIM Diagnoseliste Formatter</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #2563eb;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111827;
+        --panel: #1f2937;
+        --text: #f9fafb;
+        --muted: #9ca3af;
+        --border: #374151;
+        --accent: #60a5fa;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.5rem;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      gap: 10px;
+      margin-bottom: 14px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      background: transparent;
+      color: inherit;
+    }
+
+    textarea {
+      min-height: 280px;
+      resize: vertical;
+      white-space: pre-wrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 800px) {
+      .grid { grid-template-columns: 1fr; }
+      .controls { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>KISIM Diagnoseliste Formatter</h1>
+      <p>
+        PDF-Text einfügen, alle unerwünschten Zeilenumbrüche entfernen, doppelte Leerzeichen bereinigen
+        und neue Zeilen vor einem Marker setzen. Der Marker selbst wird dabei entfernt.
+      </p>
+
+      <div class="controls">
+        <div>
+          <label for="marker">Marker vor jedem neuen Eintrag</label>
+          <input id="marker" type="text" value="·" />
+        </div>
+        <button id="formatBtn">Formatieren</button>
+        <button id="copyBtn" class="secondary">Kopieren</button>
+        <button id="clearBtn" class="secondary">Leeren</button>
+      </div>
+
+      <div class="grid">
+        <div>
+          <label for="input">Rohtext aus PDF</label>
+          <textarea id="input" spellcheck="false">·  Aetiologie: primär-biliäre Cholangitis mit Leberzirrhose CHILD B 7, MELD 40 (Stand
+06.05.2025), ED 12/2021
+·  Risikokonstellation: HSV +/+; VZV+/+; EBV +/+; CMV +/+
+·  Diagnostik:
+·  24.10.2025: Soweit bei deutlich eingeschränkten Untersuchungsbedingungen beurteilbar
+offene Darstellung oben genannter Gefässe bei St.n. Lebertransplantation. Leicht
+erniedrigte Flussgeschwindigkeit in der A. hepatica dextra, im Verlauf zu beurteilen.
+Erhöhte Flussgeschwindigkeit in der Pfortader sowie den intrahepatischen Ästen,
+möglicherweise früh postoperativ, ebenfalls im Verlauf zu beurteilen.
+·  24.10.2025: Gering erhöhter RI-Wert der A. heaptica priopria mit leicht erniedrigter
+Flussgeschwindigkeit, a.e. frühpostoperativ. Im Verlauf etwas verbesserte
+Flussgeschwindigkeit der A. hepatica dextra. Weiterhin erhöhte Flussgeschwindigkeit der
+V. portae und des linken Pfortaderastes.
+·  Immunsuppression:
+·  Tacrolimus seit 10/2025
+·  MMF seit 27.11.2025 bis dato
+·  Prednison</textarea>
+        </div>
+
+        <div>
+          <label for="output">Bereinigter Text für KISIM</label>
+          <textarea id="output" spellcheck="false" readonly></textarea>
+        </div>
+      </div>
+
+      <div class="hint">
+        Beispiel: Marker <strong>·</strong>. Nach dem Aufteilen wird der Marker gelöscht.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const markerEl = document.getElementById('marker');
+
+    function escapeRegex(text) {
+      return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function normalizeSpaces(text) {
+      return text
+        .replace(/[ \t]+/g, ' ')
+        .replace(/ *\n */g, '\n')
+        .trim();
+    }
+
+function formatText() {
+  const raw = inputEl.value || '';
+  const markerRaw = markerEl.value || '·';
+  const marker = markerRaw.trim();
+
+  if (!raw.trim()) {
+    outputEl.value = '';
+    return;
+  }
+
+  let text = raw.replace(/\r\n?/g, '\n');
+
+  const placeholder = '<<<ENTRY>>>';
+
+  if (marker) {
+    const escapedMarker = escapeRegex(marker);
+
+    // Mark only markers at the beginning of a line (ignoring leading spaces)
+    const lineStartMarkerRegex = new RegExp('^\\s*' + escapedMarker + '\\s*', 'gm');
+    text = text.replace(lineStartMarkerRegex, placeholder);
+  }
+
+  // Now flatten PDF line breaks
+  text = text.replace(/\n+/g, ' ');
+  text = text.replace(/[ \t]+/g, ' ').trim();
+
+  let lines = text
+    .split(placeholder)
+    .map(part => part.replace(/[ \t]+/g, ' ').trim())
+    .filter(Boolean);
+
+  outputEl.value = lines.join('\n');
+}
+
+    async function copyOutput() {
+      if (!outputEl.value) return;
+      try {
+        await navigator.clipboard.writeText(outputEl.value);
+      } catch {
+        outputEl.select();
+        document.execCommand('copy');
+      }
+    }
+
+    document.getElementById('formatBtn').addEventListener('click', formatText);
+    document.getElementById('copyBtn').addEventListener('click', copyOutput);
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      inputEl.value = '';
+      outputEl.value = '';
+    });
+
+    formatText();
+  </script>
+</body>
+</html>

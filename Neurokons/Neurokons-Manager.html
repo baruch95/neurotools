@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neurokons Patient Manager</title>
+    <style>
+        :root {
+            --primary: #007bff;
+            --primary-hover: #0056b3;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --text: #333;
+            --border: #ddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+        
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        
+        /* Patient List */
+        .patient-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .patient-item {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: grab;
+        }
+        .patient-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-color: #bbb;
+        }
+        .patient-item.dragging {
+            opacity: 0.5;
+            background: #e9ecef;
+            border: 2px dashed #999;
+        }
+        
+        /* Content inside Item */
+        .drag-handle {
+            font-size: 1.2rem;
+            color: #999;
+            margin-right: 15px;
+            cursor: grab;
+            user-select: none;
+        }
+        .patient-name {
+            flex-grow: 1;
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+        .actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        /* Buttons */
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-success:hover { background-color: #218838; }
+
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-danger:hover { background-color: #c82333; }
+        
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-secondary:hover { background-color: #5a6268; }
+
+        .btn-icon {
+            padding: 5px 10px;
+            background-color: #e9ecef;
+            color: #333;
+            font-weight: bold;
+        }
+        .btn-icon:hover { background-color: #ced4da; }
+
+        /* Status Bar */
+        .status-bar {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-radius: 4px;
+            display: none;
+            text-align: center;
+        }
+        .file-input { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Neurokons Manager</h1>
+        <p style="color: #666; font-size: 0.9em; margin-bottom: 20px;">
+            Verwalten Sie die Reihenfolge und Namen Ihrer Patienten. Änderungen können direkt gespeichert (Local Storage) oder als Datei exportiert werden.
+        </p>
+
+        <div class="toolbar">
+            <button class="btn-success" onclick="addNewPatient()">+ Neuer Patient</button>
+            <div style="flex-grow:1"></div>
+            <button class="btn-primary" onclick="saveToLocalStorage()">Im Browser speichern</button>
+            <button class="btn-secondary" onclick="exportJSON()">Als JSON herunterladen</button>
+            <label class="btn-secondary" style="display:inline-block; margin-bottom:0;">
+                JSON Importieren
+                <input type="file" id="fileImport" class="file-input" accept=".json" onchange="importJSON(this)">
+            </label>
+        </div>
+
+        <ul id="patientList" class="patient-list">
+            <!-- Liste wird hier generiert -->
+        </ul>
+
+        <div id="statusMessage" class="status-bar"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'dynamicMarkdownStateV9_Patients';
+        
+        // Data Store
+        let patientsData = {}; // Das eigentliche Objekt mit den Daten
+        let patientOrder = []; // Array der IDs für die Reihenfolge
+        let currentPatientId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            renderList();
+        });
+
+        // ================= DATEN LOGIK =================
+
+        function loadFromLocalStorage() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    patientsData = parsed.patients || {};
+                    currentPatientId = parsed.currentPatientId || null;
+                    
+                    // Initial Order erstellen basierend auf vorhandenen Keys
+                    // (Wenn schon mal sortiert wurde, behält JS meist die Key-Order bei)
+                    patientOrder = Object.keys(patientsData);
+                    showMessage("Daten aus lokalem Speicher geladen.");
+                } catch (e) {
+                    console.error(e);
+                    showMessage("Fehler beim Laden der lokalen Daten.", true);
+                }
+            } else {
+                // Dummy Data für Demo, falls leer
+                showMessage("Keine lokalen Daten gefunden. Starten Sie neu oder importieren Sie eine Datei.");
+            }
+        }
+
+        function saveToLocalStorage() {
+            const reconstructedData = buildOrderedObject();
+            const stateToSave = {
+                patients: reconstructedData,
+                currentPatientId: currentPatientId
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+            showMessage("Erfolgreich im Browser (Local Storage) gespeichert!");
+        }
+
+        // Hilfsfunktion: Baut das Patienten-Objekt in der exakten Reihenfolge des Arrays neu auf
+        function buildOrderedObject() {
+            const orderedPatients = {};
+            patientOrder.forEach(id => {
+                if (patientsData[id]) {
+                    orderedPatients[id] = patientsData[id];
+                }
+            });
+            return orderedPatients;
+        }
+
+        // ================= RENDER LOGIK =================
+
+        function renderList() {
+            const listEl = document.getElementById('patientList');
+            listEl.innerHTML = '';
+
+            if (patientOrder.length === 0) {
+                listEl.innerHTML = '<li style="text-align:center; padding:20px; color:#777;">Keine Patienten vorhanden.</li>';
+                return;
+            }
+
+            patientOrder.forEach((id, index) => {
+                const li = document.createElement('li');
+                li.className = 'patient-item';
+                li.draggable = true;
+                li.dataset.id = id;
+                li.dataset.index = index;
+
+                // Drag Events
+                li.addEventListener('dragstart', handleDragStart);
+                li.addEventListener('dragover', handleDragOver);
+                li.addEventListener('drop', handleDrop);
+                li.addEventListener('dragend', handleDragEnd);
+
+                const isCurrent = (id === currentPatientId) ? ' (Aktuell ausgewählt)' : '';
+
+                li.innerHTML = `
+                    <div class="drag-handle">☰</div>
+                    <div class="patient-name">${id} <small style="color:#999; font-weight:normal;">${isCurrent}</small></div>
+                    <div class="actions">
+                        <button class="btn-icon" title="Nach oben" onclick="moveItem(${index}, -1)">▲</button>
+                        <button class="btn-icon" title="Nach unten" onclick="moveItem(${index}, 1)">▼</button>
+                        <button class="btn-primary" onclick="renamePatient('${id}')">✏️</button>
+                        <button class="btn-danger" onclick="deletePatient('${id}')">🗑️</button>
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        // ================= ACTION HANDLERS =================
+
+        function addNewPatient() {
+            const name = prompt("Name des neuen Patienten:");
+            if (!name) return;
+            if (patientsData[name]) {
+                alert("Ein Patient mit diesem Namen existiert bereits.");
+                return;
+            }
+            // Leeres Patienten-Gerüst
+            patientsData[name] = { formModel: [], instructions: "" };
+            patientOrder.push(name); // Hinten anfügen
+            
+            // Wenn es der erste ist, als aktuell setzen
+            if (!currentPatientId) currentPatientId = name;
+            
+            renderList();
+        }
+
+        function renamePatient(oldId) {
+            const newId = prompt("Neuer Name für den Patienten:", oldId);
+            if (!newId || newId === oldId) return;
+            if (patientsData[newId]) {
+                alert("Dieser Name ist bereits vergeben.");
+                return;
+            }
+
+            // Daten kopieren
+            patientsData[newId] = patientsData[oldId];
+            delete patientsData[oldId];
+
+            // ID im Array aktualisieren (Position behalten)
+            const index = patientOrder.indexOf(oldId);
+            if (index !== -1) {
+                patientOrder[index] = newId;
+            }
+
+            // Current ID check
+            if (currentPatientId === oldId) {
+                currentPatientId = newId;
+            }
+
+            renderList();
+        }
+
+        function deletePatient(id) {
+            if (!confirm(`Patient "${id}" wirklich löschen?`)) return;
+            
+            delete patientsData[id];
+            patientOrder = patientOrder.filter(pid => pid !== id);
+
+            if (currentPatientId === id) {
+                currentPatientId = patientOrder.length > 0 ? patientOrder[0] : null;
+            }
+
+            renderList();
+        }
+
+        function moveItem(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= patientOrder.length) return;
+
+            // Swap
+            const temp = patientOrder[index];
+            patientOrder[index] = patientOrder[newIndex];
+            patientOrder[newIndex] = temp;
+
+            renderList();
+        }
+
+        // ================= DRAG & DROP =================
+
+        let draggedIndex = null;
+
+        function handleDragStart(e) {
+            draggedIndex = +this.dataset.index;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // Necessary to allow dropping
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDrop(e) {
+            e.stopPropagation();
+            const targetIndex = +this.dataset.index;
+
+            if (draggedIndex !== null && draggedIndex !== targetIndex) {
+                // Element verschieben
+                const itemToMove = patientOrder[draggedIndex];
+                patientOrder.splice(draggedIndex, 1); // Entfernen
+                patientOrder.splice(targetIndex, 0, itemToMove); // Einfügen
+                renderList();
+            }
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            draggedIndex = null;
+        }
+
+        // ================= IMPORT / EXPORT =================
+
+        function exportJSON() {
+            const orderedData = buildOrderedObject();
+            const exportObj = {
+                patients: orderedData,
+                currentPatientId: currentPatientId
+            };
+            const dataStr = JSON.stringify(exportObj, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = 'patienten-manager-export.json';
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+
+        function importJSON(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    if (!json.patients) throw new Error("Kein patients-Objekt gefunden");
+                    
+                    patientsData = json.patients;
+                    currentPatientId = json.currentPatientId || Object.keys(patientsData)[0] || null;
+                    
+                    // Reihenfolge aus der Datei übernehmen (Iteriere Keys so wie sie kommen)
+                    patientOrder = Object.keys(patientsData);
+                    
+                    renderList();
+                    showMessage("Import erfolgreich! Klicken Sie auf 'Im Browser speichern', um die Änderungen zu sichern.");
+                } catch (err) {
+                    alert("Fehler beim Importieren: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Reset input
+        }
+
+        function showMessage(msg, isError = false) {
+            const el = document.getElementById('statusMessage');
+            el.textContent = msg;
+            el.style.display = 'block';
+            el.style.color = isError ? '#c62828' : '#2e7d32';
+            el.style.background = isError ? '#ffebee' : '#e8f5e9';
+            
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 4000);
+        }
+
+    </script>
+</body>
+</html>

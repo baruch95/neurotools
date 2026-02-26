@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Markdown Editor</title>
+  <script src="marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 1em;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1em;
+      margin-bottom: 1em;
+      align-items: center;
+    }
+
+    .controls label {
+      font-weight: bold;
+    }
+
+    input[type="file"] {
+      padding: 0.5em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 0.7em 1.5em;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1em;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .editor-container {
+      display: flex;
+      flex-grow: 1;
+      gap: 1em;
+    }
+
+    .editor-pane, .preview-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .editor-pane label, .preview-pane label {
+      padding: 0.5em;
+      background-color: #e9ecef;
+      border-bottom: 1px solid #ddd;
+      font-weight: bold;
+      border-top-left-radius: 4px;
+      border-top-right-radius: 4px;
+    }
+
+    #markdownInput {
+      flex-grow: 1;
+      padding: 0.5em;
+      border: none; /* Border is on parent */
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1em;
+      line-height: 1.5;
+      resize: none; /* Allow parent to control resize if needed */
+      border-bottom-left-radius: 4px;
+      border-bottom-right-radius: 4px;
+    }
+
+    #markdownInput:focus {
+      outline: none;
+    }
+
+    #htmlPreview {
+      flex-grow: 1;
+      padding: 1em;
+      border: none; /* Border is on parent */
+      overflow-y: auto;
+      line-height: 1.6;
+      border-bottom-left-radius: 4px;
+      border-bottom-right-radius: 4px;
+    }
+
+    /* Basic typography for preview */
+    #htmlPreview h1, #htmlPreview h2, #htmlPreview h3 {
+      margin-top: 0.5em;
+      margin-bottom: 0.3em;
+      color: #333;
+    }
+    #htmlPreview p {
+      margin-bottom: 0.5em;
+    }
+    #htmlPreview code {
+      background-color: #eee;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+    }
+    #htmlPreview pre {
+      background-color: #2d2d2d;
+      color: #f8f8f2;
+      padding: 1em;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    #htmlPreview pre code {
+      background-color: transparent;
+      padding: 0;
+    }
+    #htmlPreview blockquote {
+      border-left: 4px solid #ccc;
+      padding-left: 1em;
+      margin-left: 0;
+      color: #666;
+    }
+    #htmlPreview ul, #htmlPreview ol {
+      padding-left: 1.5em;
+    }
+    #htmlPreview table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 1em;
+    }
+    #htmlPreview th, #htmlPreview td {
+      border: 1px solid #ddd;
+      padding: 0.5em;
+      text-align: left;
+    }
+    #htmlPreview th {
+      background-color: #f0f0f0;
+    }
+
+    /* Start Page Styling */
+    #startPage {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh; /* Make start page take full viewport height */
+      gap: 1em; /* Gap between buttons */
+      /* Ensure it's above other content if body is also flex */
+      position: relative; 
+      z-index: 10; 
+      background-color: #f4f4f4; /* Match body background */
+    }
+
+    #startPage button { /* General styling for start page buttons */
+      padding: 1em 2em;
+      font-size: 1.2em;
+      min-width: 180px; /* Ensure buttons have a similar width */
+      /* Other button styles (border, background, cursor) will be inherited from general 'button' styles if specific enough */
+    }
+    /* Hover effect for start page buttons will also be inherited if general 'button:hover' is defined */
+
+
+    /* File List Container Styling */
+    /* For the container of the file list */
+    #fileListContainer {
+      padding: 0.5em;
+      background-color: #f0f0f0; /* Light gray, adjust if theme is dark */
+      border: 1px solid #ccc;     /* Add a border to define the container */
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 1em;
+      border-radius: 3px;
+    }
+
+    /* File List Item Styling */
+    /* #editor-container is already display:flex, gap:1em. It will be our row container. */
+
+    #homeBtn {
+      margin-right: 0.5em; /* Spacing from the next control */
+      /* Inherits general button styling for appearance */
+    }
+    
+    #resizer {
+      flex: 0 0 6px; /* flex-grow:0, flex-shrink:0, flex-basis:6px */
+      background-color: #c1c1c1;
+      cursor: col-resize;
+      margin: 0 0.2em; /* Small margin to not be flush with panes if they have borders */
+      border-radius: 3px;
+    }
+
+    #resizer:hover {
+      background-color: #007bff; /* Highlight on hover */
+    }
+    
+    .editor-pane, .preview-pane {
+      /* flex: 1; was already here implicitly from .editor-pane, .preview-pane in general styles */
+      /* Ensure they don't shrink beyond their content if window is too small, but also allow them to be sized by flex-basis */
+      min-width: 0; /* Important for flex items that are resized */
+      overflow: hidden; /* Panes themselves hide overflow; children will scroll */
+    }
+
+    /* For individual file buttons in the list */
+    .file-item-button {
+      display: block;
+      width: 100%;
+      padding: 0.6em 0.8em; /* Slightly more padding */
+      margin-bottom: 0.4em; /* Spacing */
+      background-color: #ffffff; /* White background for items */
+      color: #111111;          /* Dark text for high contrast */
+      border: 1px solid #cccccc; /* Clear border for each item */
+      border-radius: 3px;
+      text-align: left;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+
+    .file-item-button:hover {
+      background-color: #e9e9e9; /* Distinct hover background */
+      color: #000000;            /* Ensure text remains dark on hover */
+      border-color: #bbbbbb;
+    }
+    .file-item-button.active { 
+      background-color: #007bff; 
+      color: white; 
+      border-color: #0056b3; 
+    }
+  </style>
+</head>
+<body>
+  <div id="startPage">
+    <button id="newFileBtn">New File</button> <!-- Will inherit general button styles -->
+    <button id="openFileBtn">Open File</button> <!-- Will inherit general button styles -->
+    <button id="openFolderBtn">Open Folder</button> <!-- Will inherit general button styles -->
+  </div>
+
+  <div id="editorView" style="display: none;">
+    <input type="file" id="folderInput" webkitdirectory directory multiple style="display: none;">
+    <div id="folderPathDisplay" style="padding: 0.3em 0.5em; margin-bottom: 0.5em; font-style: italic; color: #333; background-color: #f0f0f0; border-radius: 3px; border: 1px solid #ddd;"></div>
+    <div id="fileListContainer"></div>
+    <div class="controls">
+      <button id="homeBtn">Back to Start</button>
+      <label for="fileInput">Upload File:</label>
+      <input type="file" id="fileInput"> <!-- Keep for single file open -->
+      <button id="saveButton">Save Markdown</button>
+      <button id="exportHtmlButton">Export to HTML</button>
+      <button id="exportPdfButton">Export to PDF</button>
+    </div>
+
+    <div class="editor-container">
+      <div class="editor-pane">
+        <label for="markdownInput">Markdown Input</label>
+        <textarea id="markdownInput" placeholder="Enter Markdown here..."></textarea>
+      </div>
+      <div id="resizer"></div>
+      <div class="preview-pane">
+        <label for="htmlPreview">HTML Preview</label>
+        <div id="htmlPreview"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const startPage = document.getElementById('startPage');
+    const editorView = document.getElementById('editorView');
+    const fileInput = document.getElementById('fileInput');
+    const folderInput = document.getElementById('folderInput');
+    const openFileBtn = document.getElementById('openFileBtn');
+    const openFolderBtn = document.getElementById('openFolderBtn');
+    const newFileBtn = document.getElementById('newFileBtn');
+    const homeBtn = document.getElementById('homeBtn'); // New button
+    const markdownInput = document.getElementById('markdownInput');
+    const htmlPreview = document.getElementById('htmlPreview');
+    const fileListContainer = document.getElementById('fileListContainer');
+    const exportHtmlButton = document.getElementById('exportHtmlButton');
+    const exportPdfButton = document.getElementById('exportPdfButton');
+    const folderPathDisplay = document.getElementById('folderPathDisplay'); // Added this
+
+    // For resizer
+    const resizer = document.getElementById('resizer');
+    const editorPane = document.querySelector('.editor-pane');
+    const previewPane = document.querySelector('.preview-pane');
+
+
+    let currentFolderFileListObjects = []; // Renamed and initialized as array
+    let currentFileHandle = null; // For File System Access API
+    let currentFileFromFolderList = null; // For files selected from the folder list
+
+    // Load content from localStorage on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedContent = localStorage.getItem('markdownEditorContent');
+      if (savedContent) {
+        markdownInput.value = savedContent;
+        // Trigger preview update
+        const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+        markdownInput.dispatchEvent(inputEvent);
+
+        // Show editor view
+        startPage.style.display = 'none';
+        editorView.style.display = 'flex';
+        editorView.style.flexDirection = 'column';
+        editorView.style.flexGrow = '1';
+      }
+    });
+
+    function rebuildFileList() {
+      fileListContainer.innerHTML = '';
+      currentFolderFileListObjects.forEach(item => {
+        const itemName = item.name;
+        if (itemName.endsWith('.md') || itemName.endsWith('.txt')) {
+          const fileButton = document.createElement('button');
+          fileButton.textContent = itemName;
+          fileButton.className = 'file-item-button';
+
+          fileButton.addEventListener('click', async function() {
+            document.querySelectorAll('#fileListContainer .file-item-button').forEach(btn => btn.classList.remove('active'));
+            fileButton.classList.add('active');
+
+            if (item instanceof FileSystemFileHandle) {
+              currentFileHandle = item;
+              currentFileFromFolderList = null;
+              try {
+                const file = await item.getFile();
+                const content = await file.text();
+                markdownInput.value = content;
+                localStorage.setItem('markdownEditorContent', content);
+                markdownInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+              } catch (err) {
+                console.error('Error loading file from handle:', err);
+                alert('Error loading file.');
+              }
+            } else { // It's a File object
+              currentFileFromFolderList = item;
+              currentFileHandle = null;
+              const reader = new FileReader();
+              reader.onload = function(e) {
+                markdownInput.value = e.target.result;
+                localStorage.setItem('markdownEditorContent', e.target.result);
+                markdownInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+              };
+              reader.readAsText(item);
+            }
+          });
+
+          if (currentFileHandle && currentFileHandle.name === itemName) {
+            fileButton.classList.add('active');
+          } else if (currentFileFromFolderList && currentFileFromFolderList.name === itemName && !currentFileHandle) {
+            // If a file from folder list is active (but not yet saved to a handle), also mark it.
+             fileButton.classList.add('active');
+          }
+
+          fileListContainer.appendChild(fileButton);
+        }
+      });
+    }
+
+    openFileBtn.addEventListener('click', async function() { // Made async
+      if (window.showOpenFilePicker) {
+        try {
+          const handles = await window.showOpenFilePicker({
+            types: [{
+              description: 'Markdown Files',
+              accept: { 'text/markdown': ['.md', '.markdown'] }
+            }],
+            multiple: false
+          });
+          currentFileHandle = handles[0];
+          const file = await currentFileHandle.getFile();
+          const content = await file.text();
+          
+          markdownInput.value = content;
+          localStorage.setItem('markdownEditorContent', content);
+          const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+          markdownInput.dispatchEvent(inputEvent); // Updates preview and saves to LS again (idempotent)
+
+          // fileListContainer.innerHTML = ''; // Cleared by rebuildFileList
+          folderPathDisplay.textContent = ''; // Clear folder path display
+          currentFolderFileListObjects = []; // Clear the array
+          rebuildFileList(); // Clear the displayed list
+          currentFileFromFolderList = null; // Clear folder list marker
+
+          startPage.style.display = 'none';
+          editorView.style.display = 'flex';
+          editorView.style.flexDirection = 'column';
+          editorView.style.flexGrow = '1';
+          return; // Success, skip fallback
+        } catch (err) {
+          console.error('Error using showOpenFilePicker:', err);
+          // Fall through to legacy input if user cancels or error occurs
+        }
+      }
+      // Fallback for browsers that don't support the API or if picker failed
+      fileInput.click(); 
+    });
+
+    openFolderBtn.addEventListener('click', function() {
+      folderInput.click();
+    });
+
+    newFileBtn.addEventListener('click', function() {
+      startPage.style.display = 'none';
+      editorView.style.display = 'flex';
+      editorView.style.flexDirection = 'column';
+      editorView.style.flexGrow = '1';
+
+      markdownInput.value = '';
+      htmlPreview.innerHTML = ''; 
+      localStorage.setItem('markdownEditorContent', ''); 
+      
+      fileListContainer.innerHTML = '';
+      folderPathDisplay.textContent = ''; // Clear folder path display
+      currentFolderFileListObjects = []; // Clear the array
+      rebuildFileList(); // Clear the displayed list
+      currentFileHandle = null; // Reset file handle
+      currentFileFromFolderList = null; 
+      
+      fileInput.value = null; 
+      folderInput.value = null;
+    });
+
+    // Fallback file input listener
+    fileInput.addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        // fileListContainer.innerHTML = ''; // Cleared by rebuildFileList
+        folderPathDisplay.textContent = ''; // Clear folder path display
+        currentFolderFileListObjects = []; // Clear the array
+        rebuildFileList(); // Clear the displayed list
+        currentFileHandle = null; // Reset file handle for legacy input
+        currentFileFromFolderList = null; // Clear folder list marker
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const content = e.target.result;
+          markdownInput.value = content; 
+          localStorage.setItem('markdownEditorContent', content); 
+          // htmlPreview.innerHTML = marked.parse(content); // Dispatching input event is better
+          const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+          markdownInput.dispatchEvent(inputEvent);
+
+
+          startPage.style.display = 'none';
+          editorView.style.display = 'flex'; 
+          editorView.style.flexDirection = 'column';
+          editorView.style.flexGrow = '1';
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    folderInput.addEventListener('change', function(event) {
+      currentFolderFileListObjects = Array.from(event.target.files); // Convert FileList to Array
+      // fileListContainer.innerHTML = ''; // Cleared by rebuildFileList
+
+      if (currentFolderFileListObjects.length > 0) {
+        // Display folder path
+        const firstFile = currentFolderFileListObjects[0];
+        let path = './'; // Default if no deeper path
+        if (firstFile.webkitRelativePath && firstFile.webkitRelativePath.includes('/')) {
+          path = firstFile.webkitRelativePath.substring(0, firstFile.webkitRelativePath.lastIndexOf('/') + 1);
+        }
+        folderPathDisplay.textContent = 'Current folder: ' + path;
+        
+        rebuildFileList(); // Centralized list building
+
+        startPage.style.display = 'none';
+        editorView.style.display = 'flex';
+        editorView.style.flexDirection = 'column';
+        editorView.style.flexGrow = '1';
+
+        // Clear editor and localStorage as no specific file from the folder is active yet.
+        markdownInput.value = '';
+        htmlPreview.innerHTML = '';
+        localStorage.setItem('markdownEditorContent', '');
+        currentFileHandle = null; 
+        currentFileFromFolderList = null;
+      } else {
+        folderPathDisplay.textContent = ''; 
+        rebuildFileList(); // Ensure list is cleared even if folder is empty
+      }
+      folderInput.value = null; // Reset file input
+    });
+
+    homeBtn.addEventListener('click', function() {
+      editorView.style.display = 'none';
+      startPage.style.display = 'flex'; 
+      folderPathDisplay.textContent = ''; 
+      currentFolderFileListObjects = []; // Clear the array
+      rebuildFileList(); // Clear the displayed list
+    });
+
+    // Resizer logic (remains the same)
+    resizer.addEventListener('mousedown', function(e) {
+      e.preventDefault(); 
+
+      const initialX = e.clientX;
+      const initialEditorWidth = editorPane.offsetWidth;
+      const initialPreviewWidth = previewPane.offsetWidth;
+      const parentWidth = editorPane.parentElement.offsetWidth; 
+
+      function onMouseMove(eMove) {
+        const dx = eMove.clientX - initialX;
+        let newEditorWidth = initialEditorWidth + dx;
+        let newPreviewWidth = initialPreviewWidth - dx;
+
+        const minWidthPx = Math.max(100, parentWidth * 0.1);
+
+        if (newEditorWidth < minWidthPx) {
+          newEditorWidth = minWidthPx;
+          newPreviewWidth = parentWidth - newEditorWidth - resizer.offsetWidth - (2 * parseFloat(getComputedStyle(resizer).marginRight)); 
+        }
+        if (newPreviewWidth < minWidthPx) {
+          newPreviewWidth = minWidthPx;
+          newEditorWidth = parentWidth - newPreviewWidth - resizer.offsetWidth - (2 * parseFloat(getComputedStyle(resizer).marginRight));
+        }
+        
+        editorPane.style.flexBasis = newEditorWidth + 'px';
+        previewPane.style.flexBasis = newPreviewWidth + 'px';
+        editorPane.style.flexGrow = '0'; 
+        previewPane.style.flexGrow = '0';
+      }
+
+      function onMouseUp() {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      }
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+
+    markdownInput.addEventListener('input', function(event) {
+      const currentContent = event.target.value;
+      htmlPreview.innerHTML = marked.parse(currentContent); 
+      localStorage.setItem('markdownEditorContent', currentContent); 
+    });
+
+    document.getElementById('saveButton').addEventListener('click', async function() { // Made async
+      const markdownContent = markdownInput.value;
+
+      if (currentFileHandle && typeof currentFileHandle.createWritable === 'function') {
+        try {
+          const writable = await currentFileHandle.createWritable();
+          await writable.write(markdownContent);
+          await writable.close();
+          console.log('File saved directly to original location!');
+          // Optionally, add a more user-visible notification here
+          alert('File saved successfully to its original location!');
+          return; // Success, skip download fallback
+        } catch (err) {
+          console.error('Error during direct save:', err);
+          alert('Error saving file directly. It might have been moved or permissions changed. Using download fallback.');
+          // Fall through to download logic, but currentFileHandle might still be valid for name suggestion
+        }
+      }
+      // Save for files selected from folder list (using showSaveFilePicker)
+      else if (currentFileFromFolderList) {
+        try {
+          const newFileHandle = await window.showSaveFilePicker({
+            suggestedName: currentFileFromFolderList.name,
+            types: [{
+              description: 'Markdown Files',
+              accept: { 'text/markdown': ['.md'] }
+            }]
+          });
+          const writable = await newFileHandle.createWritable();
+          await writable.write(markdownContent);
+          await writable.close();
+          alert('File saved successfully!');
+          currentFileHandle = newFileHandle; // Promote to a full handle
+          
+          // Update currentFolderFileListObjects to replace File with FileSystemFileHandle or add new handle
+          const oldFileIndex = currentFolderFileListObjects.findIndex(f => f === currentFileFromFolderList);
+          if (oldFileIndex !== -1) {
+            currentFolderFileListObjects[oldFileIndex] = newFileHandle;
+          } else {
+            // This case might occur if the user saved with a new name that wasn't the suggested one
+            // Or if currentFileFromFolderList was somehow cleared before this point (shouldn't happen in normal flow)
+            // Check if a handle/file with this new name already exists in the list
+            const existingFileOrHandleIndex = currentFolderFileListObjects.findIndex(f => f.name === newFileHandle.name);
+            if (existingFileOrHandleIndex !== -1) {
+                // If a file/handle with the new name already exists, replace it.
+                // This is important if user saves "fileA.md" (from folder) as "fileB.md" (also in folder list).
+                currentFolderFileListObjects[existingFileOrHandleIndex] = newFileHandle;
+            } else {
+                // If truly a new name not in the list, add it.
+                currentFolderFileListObjects.push(newFileHandle);
+            }
+          }
+
+          currentFileFromFolderList = null;  // Clear the folder list marker
+          localStorage.setItem('markdownEditorContent', markdownContent); // Update localStorage
+          rebuildFileList(); // Refresh the list
+          return; // Saved successfully
+        } catch (err) {
+          console.error('Error saving file selected from folder list:', err);
+          if (err.name === 'AbortError') {
+            alert('Save operation cancelled.');
+          } else {
+            alert('Error saving file. It might be an issue with permissions or the file system.');
+          }
+          return; // Do not proceed to download fallback if user cancelled or error in picker
+        }
+      }
+      // Fallback download logic for truly new files or if other save methods fail in a way that leads here
+      else {
+        let filename = 'untitled.md'; // Default for new files
+        // This part of the logic is for when currentFileHandle is null (new file) 
+        // or when currentFileHandle exists but direct save failed (handled by falling through the first if)
+        // However, if direct save failed, currentFileHandle.name would have been used if available.
+        // So this prompt is mainly for truly new files.
+        if (currentFileHandle && currentFileHandle.name) {
+            // This case should ideally be less common if direct save fails and falls through,
+            // as the filename would be derived from currentFileHandle.name.
+            // Keeping it for robustness or if the first 'if' for direct save doesn't fall through as expected.
+            filename = currentFileHandle.name;
+        }
+
+        const requestedName = window.prompt('Enter filename:', filename);
+        if (requestedName === null || requestedName.trim() === '') {
+          // User cancelled or entered empty, stick to original default or derived name
+          // If filename was 'untitled.md', it remains so. If it was from currentFileHandle.name, it uses that.
+        } else {
+          filename = requestedName.trim();
+        }
+        
+        // Ensure the filename ends with .md
+        if (!filename.toLowerCase().endsWith('.md')) {
+          filename += '.md';
+        }
+
+        const blob = new Blob([markdownContent], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a); // Required for Firefox
+        a.click();
+        document.body.removeChild(a); // Clean up
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    exportHtmlButton.addEventListener('click', function() {
+      const htmlContent = htmlPreview.innerHTML;
+      let defaultFilename = 'untitled.html'; // Changed for consistency
+
+      if (currentFileHandle && currentFileHandle.name) {
+        const baseName = currentFileHandle.name.replace(/\.(md|markdown)$/i, '');
+        defaultFilename = baseName + '.html';
+      }
+
+      let finalFilename = window.prompt('Enter HTML filename:', defaultFilename);
+
+      if (finalFilename === null || finalFilename.trim() === '') {
+        finalFilename = defaultFilename;
+      }
+
+      // Ensure the filename ends with .html
+      if (!finalFilename.toLowerCase().endsWith('.html')) {
+        // If it has another extension, replace it. Otherwise, append.
+        if (finalFilename.includes('.')) {
+            finalFilename = finalFilename.substring(0, finalFilename.lastIndexOf('.')) + '.html';
+        } else {
+            finalFilename += '.html';
+        }
+      }
+
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = finalFilename;
+      document.body.appendChild(a); // Required for Firefox
+      a.click();
+      document.body.removeChild(a); // Clean up
+      URL.revokeObjectURL(url);
+    });
+
+    exportPdfButton.addEventListener('click', function() {
+      const element = htmlPreview; // htmlPreview is already the DOM element
+      let defaultFilename = 'untitled.pdf'; // Changed for consistency
+
+      if (currentFileHandle && currentFileHandle.name) {
+        const baseName = currentFileHandle.name.replace(/\.(md|markdown)$/i, '');
+        defaultFilename = baseName + '.pdf';
+      }
+
+      let finalFilename = window.prompt('Enter PDF filename:', defaultFilename);
+
+      if (finalFilename === null || finalFilename.trim() === '') {
+        finalFilename = defaultFilename;
+      }
+
+      // Ensure the filename ends with .pdf
+      if (!finalFilename.toLowerCase().endsWith('.pdf')) {
+        if (finalFilename.includes('.')) {
+            finalFilename = finalFilename.substring(0, finalFilename.lastIndexOf('.')) + '.pdf';
+        } else {
+            finalFilename += '.pdf';
+        }
+      }
+
+      const options = {
+        margin: 1,
+        filename: finalFilename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+
+      // html2pdf.js usage
+      html2pdf().from(element).set(options).save();
+    });
+
+    // Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(error => {
+            console.log('ServiceWorker registration failed: ', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>

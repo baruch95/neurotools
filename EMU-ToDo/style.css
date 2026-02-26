@@ -1,0 +1,257 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    background-color: #f4f4f4;
+    color: #333;
+    font-size: 15px; /* Slightly smaller base font */
+}
+
+header {
+    background-color: #333; /* Darker header */
+    color: white;
+    padding: 15px 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+.global-controls button, .global-controls .button-like-label {
+    padding: 8px 12px;
+    margin-left: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.global-controls button:hover, .global-controls .button-like-label:hover {
+    background-color: #0056b3;
+}
+.button-like-label { display: inline-block; } /* Make label behave like a button */
+
+.main-container {
+    padding: 20px;
+}
+
+#generalNotesSection, #overviewSection, #currentWeekSection {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+
+#generalNotesSection h2, #overviewSection h2, #currentWeekSection h2 {
+    margin-top: 0;
+    color: #0056b3; /* Primary color for headings */
+    border-bottom: 2px solid #e9e9e9;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.section-divider {
+    border: 0;
+    height: 1px;
+    background-color: #ccc;
+    margin: 30px 0;
+}
+
+/* General Todos & Notes Styles */
+#generalNotesSection .general-content-container {
+    display: flex;
+    gap: 20px;
+}
+#generalNotesSection .general-todos-container,
+#generalNotesSection .general-notes-container {
+    flex: 1;
+}
+#generalNotesSection h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #333;
+}
+#generalNotesSection .add-todo-container {
+    display: flex;
+    margin-top: 10px;
+    gap: 10px;
+}
+#generalNotesSection #addTodoInput {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+#generalNotesSection #addTodoButton {
+    padding: 8px 12px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#generalNotesSection #addTodoButton:hover {
+    background-color: #218838;
+}
+#generalNotesSection #generalNotesTextarea {
+    width: calc(100% - 16px); /* Adjust for padding */
+    min-height: 150px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: sans-serif;
+    font-size: 0.95em;
+}
+.general-task-list li button.delete-todo {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 1em;
+    margin-left: auto; /* Pushes button to the right */
+    padding: 0 5px;
+}
+.general-task-list li button.delete-todo:hover {
+    color: #c82333;
+    font-weight: bold;
+}
+
+
+/* Overview Styles */
+#overviewContent table {
+    width: 100%;
+    border-collapse: collapse;
+}
+#overviewContent th, #overviewContent td {
+    border: 1px solid #ddd;
+    padding: 8px 10px;
+    text-align: left;
+}
+#overviewContent th {
+    background-color: #f0f0f0;
+}
+#overviewContent .progress-bar-container {
+    width: 100%;
+    background-color:rgba(39, 39, 39, 0.84);
+    border-radius: 4px;
+    overflow: hidden;
+    height: 18px; /* Height for the progress bar */
+    line-height: 18px; /* For text inside */
+}
+#overviewContent .patient-link {
+    color: white;
+}
+#overviewContent .progress-bar {
+    height: 100%;
+    background-color: #4CAF50;
+    color: white;
+    text-align: center;
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+#overviewContent .week-row.completed-100 {
+    background-color: #e6ffe6; /* Light green for 100% completed weeks */
+}
+#overviewContent .week-row.completed-100 td {
+    font-weight: bold;
+}
+
+
+/* Current Week Styles */
+.week-selector-container {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Spacing between elements */
+}
+.week-selector-container label { font-weight: bold; }
+.week-selector-container select, .week-selector-container input[type="text"] {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+.danger-button {
+    background-color: #dc3545 !important; /* Important to override other button styles */
+}
+.danger-button:hover {
+    background-color: #c82333 !important;
+}
+
+
+.patient-details-container {
+    display: flex;
+    gap: 20px;
+}
+
+.patient-column-editor {
+    flex: 1;
+    background-color: #fdfdfd;
+    padding: 15px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+}
+.patient-name-input {
+    width: calc(100% - 20px); /* Adjust width */
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.task-list {
+    list-style-type: none;
+    padding: 0;
+}
+.task-list li {
+    padding: 10px 5px; /* More padding */
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    font-size: 0.95em; /* Slightly adjusted font size */
+}
+.task-list li:last-child { border-bottom: none; }
+.task-list input[type="checkbox"] {
+    margin-right: 12px;
+    transform: scale(1.3);
+}
+.task-list label { flex-grow: 1; }
+.task-list a {
+    margin-left: 10px;
+    color: #007bff;
+    text-decoration: none;
+    font-size: 0.9em;
+}
+.task-list a:hover { text-decoration: underline; }
+.task-list small {
+    display: block;
+    font-size: 0.8em;
+    color: #666;
+    margin-left: 30px; /* Align with text after checkbox */
+    margin-top: 3px;
+}
+.task-list input[type="checkbox"]:checked + label {
+    text-decoration: line-through;
+    color: #888;
+}
+.task-list a.path-copy-link {
+    cursor: pointer;
+    color: #0056b3; /* Slightly different blue or your preferred link color */
+    text-decoration: underline;
+}
+
+.task-list a.path-copy-link:hover {
+    color: #003d80; /* Darker on hover */
+}
