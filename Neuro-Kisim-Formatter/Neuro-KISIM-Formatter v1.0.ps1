@@ -27,6 +27,7 @@ $script:isLoadingSession = $false
 $script:textbausteinForm = $null
 $script:rulesForm = $null
 $script:sidebarFilteredSnippets = @()
+$script:autoSaveTimer = $null
 
 # Load Config
 if (Test-Path $script:configFile) {
@@ -156,11 +157,49 @@ function Get-ActiveEditor {
     return $tabPatients.SelectedTab.Controls[0]
 }
 
+function Ensure-SnippetState {
+    if (-not $script:snippets) {
+        $script:snippets = New-Object System.Collections.ArrayList
+    }
+
+    if ($script:snippets -isnot [System.Collections.ArrayList]) {
+        $arr = New-Object System.Collections.ArrayList
+        foreach ($item in @($script:snippets)) { [void]$arr.Add($item) }
+        $script:snippets = $arr
+    }
+
+    for ($i = 0; $i -lt $script:snippets.Count; $i++) {
+        $item = $script:snippets[$i]
+        if (-not $item) { continue }
+
+        $cats = @()
+        if ($item.PSObject.Properties.Name -contains 'categories' -and $item.categories) {
+            foreach ($c in @($item.categories)) {
+                $tag = [string]$c
+                if (-not [string]::IsNullOrWhiteSpace($tag) -and ($cats -notcontains $tag.Trim())) { $cats += $tag.Trim() }
+            }
+        }
+        elseif ($item.PSObject.Properties.Name -contains 'category' -and $item.category) {
+            $tag = ([string]$item.category).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($tag)) { $cats += $tag }
+        }
+        if ($cats.Count -eq 0) { $cats = @('Allgemein') }
+
+        $script:snippets[$i] = [PSCustomObject]@{
+            title = [string]$item.title
+            content = [string]$item.content
+            categories = $cats
+        }
+    }
+}
+
 function Save-Snippets {
+    Ensure-SnippetState
     $script:snippets | ConvertTo-Json -Depth 5 | Set-Content -Path $script:snippetFile -Encoding UTF8
 }
 
 function Get-SnippetCategories {
+    Ensure-SnippetState
     $cats = New-Object System.Collections.Generic.HashSet[string]
     foreach ($sn in $script:snippets) {
         if ($sn.categories) {
@@ -192,6 +231,7 @@ function Update-SnippetFilterOptions {
 }
 
 function Refresh-SnippetSidebar {
+    Ensure-SnippetState
     if (-not $lstSnippetSidebar) { return }
 
     $lstSnippetSidebar.Items.Clear()
@@ -237,6 +277,8 @@ function Insert-TextIntoActiveEditor {
 }
 
 function Show-TextbausteineDialog {
+    Ensure-SnippetState
+
     if ($script:textbausteinForm -and -not $script:textbausteinForm.IsDisposed) {
         $script:textbausteinForm.BringToFront()
         $script:textbausteinForm.Focus()
@@ -246,33 +288,31 @@ function Show-TextbausteineDialog {
     $dlg = New-Object System.Windows.Forms.Form
     $script:textbausteinForm = $dlg
     $dlg.Text = "Textbausteine-Editor"
-    $dlg.Size = New-Object System.Drawing.Size(760, 520)
+    $dlg.Size = New-Object System.Drawing.Size(800, 560)
     $dlg.StartPosition = "CenterScreen"
 
     $splitDlg = New-Object System.Windows.Forms.SplitContainer
     $splitDlg.Dock = "Fill"
     $splitDlg.FixedPanel = "Panel1"
-    $splitDlg.SplitterDistance = 250
+    $splitDlg.SplitterDistance = 260
     $dlg.Controls.Add($splitDlg)
 
     $list = New-Object System.Windows.Forms.ListBox
     $list.Dock = "Fill"
     $splitDlg.Panel1.Controls.Add($list)
 
-    $pnlRightDlg = New-Object System.Windows.Forms.Panel
-    $pnlRightDlg.Dock = "Fill"
-    $splitDlg.Panel2.Controls.Add($pnlRightDlg)
-
-    $pnlActionsDlg = New-Object System.Windows.Forms.FlowLayoutPanel
-    $pnlActionsDlg.Dock = "Bottom"
-    $pnlActionsDlg.Height = 42
-    $pnlActionsDlg.FlowDirection = "LeftToRight"
-    $pnlRightDlg.Controls.Add($pnlActionsDlg)
+    $layout = New-Object System.Windows.Forms.TableLayoutPanel
+    $layout.Dock = "Fill"
+    $layout.RowCount = 3
+    $layout.ColumnCount = 1
+    [void]$layout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 130)))
+    [void]$layout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+    [void]$layout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 44)))
+    $splitDlg.Panel2.Controls.Add($layout)
 
     $pnlFields = New-Object System.Windows.Forms.Panel
-    $pnlFields.Dock = "Top"
-    $pnlFields.Height = 120
-    $pnlRightDlg.Controls.Add($pnlFields)
+    $pnlFields.Dock = "Fill"
+    $layout.Controls.Add($pnlFields, 0, 0)
 
     $lblTitleDlg = New-Object System.Windows.Forms.Label
     $lblTitleDlg.Text = "Titel"
@@ -282,7 +322,7 @@ function Show-TextbausteineDialog {
 
     $txtSnippetTitle = New-Object System.Windows.Forms.TextBox
     $txtSnippetTitle.Location = New-Object System.Drawing.Point(0, 22)
-    $txtSnippetTitle.Width = 460
+    $txtSnippetTitle.Width = 490
     $txtSnippetTitle.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $pnlFields.Controls.Add($txtSnippetTitle)
 
@@ -294,21 +334,26 @@ function Show-TextbausteineDialog {
 
     $txtSnippetCategories = New-Object System.Windows.Forms.TextBox
     $txtSnippetCategories.Location = New-Object System.Drawing.Point(0, 70)
-    $txtSnippetCategories.Width = 460
+    $txtSnippetCategories.Width = 490
     $txtSnippetCategories.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $pnlFields.Controls.Add($txtSnippetCategories)
 
     $lblContentDlg = New-Object System.Windows.Forms.Label
     $lblContentDlg.Text = "Inhalt"
     $lblContentDlg.AutoSize = $true
-    $lblContentDlg.Location = New-Object System.Drawing.Point(0, 98)
+    $lblContentDlg.Location = New-Object System.Drawing.Point(0, 100)
     $pnlFields.Controls.Add($lblContentDlg)
 
     $txtSnippetContent = New-Object System.Windows.Forms.TextBox
     $txtSnippetContent.Multiline = $true
     $txtSnippetContent.ScrollBars = "Vertical"
     $txtSnippetContent.Dock = "Fill"
-    $pnlRightDlg.Controls.Add($txtSnippetContent)
+    $layout.Controls.Add($txtSnippetContent, 0, 1)
+
+    $pnlActionsDlg = New-Object System.Windows.Forms.FlowLayoutPanel
+    $pnlActionsDlg.Dock = "Fill"
+    $pnlActionsDlg.FlowDirection = "LeftToRight"
+    $layout.Controls.Add($pnlActionsDlg, 0, 2)
 
     $btnNewSnip = New-Object System.Windows.Forms.Button; $btnNewSnip.Text = "Neu"
     $btnSaveSnip = New-Object System.Windows.Forms.Button; $btnSaveSnip.Text = "Speichern"
@@ -318,16 +363,22 @@ function Show-TextbausteineDialog {
     $pnlActionsDlg.Controls.AddRange(@($btnNewSnip, $btnSaveSnip, $btnDeleteSnip, $btnInsertSnip, $btnCloseDlg))
 
     $refreshSnipList = {
+        Ensure-SnippetState
         $list.Items.Clear()
-        foreach ($sn in $script:snippets) { [void]$list.Items.Add($sn.title) }
+        foreach ($sn in $script:snippets) { [void]$list.Items.Add([string]$sn.title) }
     }
 
     $loadSelected = {
+        Ensure-SnippetState
         if ($list.SelectedIndex -lt 0) { return }
+        if ($list.SelectedIndex -ge $script:snippets.Count) { return }
+
         $sel = $script:snippets[$list.SelectedIndex]
+        if (-not $sel) { return }
+
         $txtSnippetTitle.Text = [string]$sel.title
         $txtSnippetContent.Text = [string]$sel.content
-        $txtSnippetCategories.Text = if ($sel.categories) { ($sel.categories -join ', ') } else { '' }
+        $txtSnippetCategories.Text = if ($sel.categories) { (@($sel.categories) -join ', ') } else { '' }
     }
 
     $list.Add_SelectedIndexChanged($loadSelected.GetNewClosure())
@@ -341,15 +392,19 @@ function Show-TextbausteineDialog {
     }.GetNewClosure())
 
     $btnSaveSnip.Add_Click({
-        $title = $txtSnippetTitle.Text.Trim()
-        $content = $txtSnippetContent.Text
+        Ensure-SnippetState
+
+        $title = [string]$txtSnippetTitle.Text
+        if (-not [string]::IsNullOrWhiteSpace($title)) { $title = $title.Trim() }
+        $content = [string]$txtSnippetContent.Text
+
         if ([string]::IsNullOrWhiteSpace($title) -or [string]::IsNullOrWhiteSpace($content)) {
             [System.Windows.Forms.MessageBox]::Show("Titel und Inhalt sind erforderlich.", "Hinweis")
             return
         }
 
         $cats = @()
-        foreach ($part in ($txtSnippetCategories.Text -split ',')) {
+        foreach ($part in ([string]$txtSnippetCategories.Text -split ',')) {
             $tag = $part.Trim()
             if (-not [string]::IsNullOrWhiteSpace($tag) -and ($cats -notcontains $tag)) { $cats += $tag }
         }
@@ -357,7 +412,7 @@ function Show-TextbausteineDialog {
 
         $obj = [PSCustomObject]@{ title = $title; content = $content; categories = $cats }
 
-        if ($list.SelectedIndex -ge 0) {
+        if ($list.SelectedIndex -ge 0 -and $list.SelectedIndex -lt $script:snippets.Count) {
             $script:snippets[$list.SelectedIndex] = $obj
         } else {
             [void]$script:snippets.Add($obj)
@@ -368,26 +423,30 @@ function Show-TextbausteineDialog {
         & $refreshSnipList
         Update-SnippetFilterOptions
         Refresh-SnippetSidebar
+        [System.Windows.Forms.MessageBox]::Show("Textbaustein gespeichert.", "Saved")
     }.GetNewClosure())
 
     $btnDeleteSnip.Add_Click({
-        if ($list.SelectedIndex -lt 0) { return }
-        $idx = $list.SelectedIndex
+        Ensure-SnippetState
+        if ($list.SelectedIndex -lt 0 -or $list.SelectedIndex -ge $script:snippets.Count) { return }
+
         $confirm = [System.Windows.Forms.MessageBox]::Show("Textbaustein löschen?", "Löschen", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
         if ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { return }
 
-        $script:snippets.RemoveAt($idx)
+        $script:snippets.RemoveAt($list.SelectedIndex)
         Save-Snippets
         & $refreshSnipList
         Update-SnippetFilterOptions
         Refresh-SnippetSidebar
+
         $txtSnippetTitle.Text = ''
         $txtSnippetContent.Text = ''
         $txtSnippetCategories.Text = ''
     }.GetNewClosure())
 
     $btnInsertSnip.Add_Click({
-        if ($list.SelectedIndex -lt 0) { return }
+        Ensure-SnippetState
+        if ($list.SelectedIndex -lt 0 -or $list.SelectedIndex -ge $script:snippets.Count) { return }
         $sel = $script:snippets[$list.SelectedIndex]
         Insert-TextIntoActiveEditor -text ([string]$sel.content)
         Save-TempSession
@@ -396,7 +455,8 @@ function Show-TextbausteineDialog {
     $btnCloseDlg.Add_Click({ $dlg.Close() }.GetNewClosure())
 
     $list.Add_DoubleClick({
-        if ($list.SelectedIndex -lt 0) { return }
+        Ensure-SnippetState
+        if ($list.SelectedIndex -lt 0 -or $list.SelectedIndex -ge $script:snippets.Count) { return }
         $sel = $script:snippets[$list.SelectedIndex]
         Insert-TextIntoActiveEditor -text ([string]$sel.content)
         Save-TempSession
@@ -898,6 +958,7 @@ $btnCopy.Add_Click({
 
 $form.Add_FormClosing({
     param($sender, $e)
+    if ($script:autoSaveTimer) { $script:autoSaveTimer.Stop() }
     $result = [System.Windows.Forms.MessageBox]::Show(
         "Möchten Sie die geöffneten Patientendaten als temporäre Datei speichern?`n`nJa = Speichern und beenden`nNein = Ohne Speichern beenden (Temp-Datei löschen)`nAbbrechen = Zurück zur App",
         "Programm beenden",
@@ -916,7 +977,19 @@ $form.Add_FormClosing({
         }
         default {
             $e.Cancel = $true
+            if ($script:autoSaveTimer) { $script:autoSaveTimer.Start() }
         }
+    }
+})
+
+$script:autoSaveTimer = New-Object System.Windows.Forms.Timer
+$script:autoSaveTimer.Interval = 10000
+$script:autoSaveTimer.Add_Tick({
+    try {
+        Save-TempSession
+        Write-Host ("[Autosave] " + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')) -ForegroundColor DarkCyan
+    } catch {
+        Write-Host ("[Autosave-Error] " + $_.Exception.Message) -ForegroundColor Red
     }
 })
 
@@ -925,6 +998,7 @@ Update-SnippetFilterOptions
 Refresh-SnippetSidebar
 $form.Add_Shown({
     Load-TempSession
+    if ($script:autoSaveTimer) { $script:autoSaveTimer.Start() }
     $editor = Get-ActiveEditor
     if ($editor) { $editor.Focus() }
 })
