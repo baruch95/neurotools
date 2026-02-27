@@ -18,7 +18,9 @@ try {
 # --- 2. Configuration & State ---
 $script:configFile = Join-Path $PSScriptRoot "formatterv2_rules.json"
 $script:sessionFile = Join-Path $PSScriptRoot "formatterv2_temp_session.json"
+$script:snippetFile = Join-Path $PSScriptRoot "formatterv2_textbausteine.json"
 $script:rules = New-Object System.Collections.ArrayList
+$script:snippets = New-Object System.Collections.ArrayList
 $script:globalFont = "Arial"
 $script:tabCounter = 1
 $script:isLoadingSession = $false
@@ -35,6 +37,22 @@ if (Test-Path $script:configFile) {
 } else {
     [void]$script:rules.Add(@{keyword="Sozialanamnese"; style="underline"})
     [void]$script:rules.Add(@{keyword="$EEG vom *:$"; style="bold"})
+}
+
+if (Test-Path $script:snippetFile) {
+    try {
+        $snippetJson = Get-Content $script:snippetFile -Raw | ConvertFrom-Json
+        foreach ($snip in $snippetJson) {
+            if (-not [string]::IsNullOrWhiteSpace($snip.title) -and -not [string]::IsNullOrWhiteSpace($snip.content)) {
+                [void]$script:snippets.Add([PSCustomObject]@{ title = [string]$snip.title; content = [string]$snip.content })
+            }
+        }
+    } catch {}
+}
+
+if ($script:snippets.Count -eq 0) {
+    [void]$script:snippets.Add([PSCustomObject]@{ title = "o.B."; content = "o.B." })
+    [void]$script:snippets.Add([PSCustomObject]@{ title = "Pat. berichtet"; content = "Der Patient berichtet über " })
 }
 
 # --- 3. RTF Generation Logic ---
@@ -125,6 +143,167 @@ function Get-ActiveEditor {
     return $tabPatients.SelectedTab.Controls[0]
 }
 
+function Save-Snippets {
+    $script:snippets | ConvertTo-Json -Depth 4 | Set-Content -Path $script:snippetFile -Encoding UTF8
+}
+
+function Insert-TextIntoActiveEditor {
+    param([string]$text)
+    $editor = Get-ActiveEditor
+    if (-not $editor) { return }
+
+    $selectionStart = $editor.SelectionStart
+    $selectionLength = $editor.SelectionLength
+    $currentText = $editor.Text
+
+    $before = $currentText.Substring(0, $selectionStart)
+    $after = $currentText.Substring($selectionStart + $selectionLength)
+    $editor.Text = $before + $text + $after
+
+    $newPos = $selectionStart + $text.Length
+    $editor.SelectionStart = $newPos
+    $editor.SelectionLength = 0
+    $editor.Focus()
+}
+
+function Show-TextbausteineDialog {
+    $dlg = New-Object System.Windows.Forms.Form
+    $dlg.Text = "Textbausteine"
+    $dlg.Size = New-Object System.Drawing.Size(720, 500)
+    $dlg.StartPosition = "CenterParent"
+
+    $splitDlg = New-Object System.Windows.Forms.SplitContainer
+    $splitDlg.Dock = "Fill"
+    $splitDlg.FixedPanel = "Panel1"
+    $splitDlg.SplitterDistance = 240
+    $dlg.Controls.Add($splitDlg)
+
+    $list = New-Object System.Windows.Forms.ListBox
+    $list.Dock = "Fill"
+    $splitDlg.Panel1.Controls.Add($list)
+
+    $pnlRightDlg = New-Object System.Windows.Forms.Panel
+    $pnlRightDlg.Dock = "Fill"
+    $splitDlg.Panel2.Controls.Add($pnlRightDlg)
+
+    $lblTitleDlg = New-Object System.Windows.Forms.Label
+    $lblTitleDlg.Text = "Titel"
+    $lblTitleDlg.Dock = "Top"
+    $pnlRightDlg.Controls.Add($lblTitleDlg)
+
+    $txtSnippetTitle = New-Object System.Windows.Forms.TextBox
+    $txtSnippetTitle.Dock = "Top"
+    $pnlRightDlg.Controls.Add($txtSnippetTitle)
+
+    $lblContentDlg = New-Object System.Windows.Forms.Label
+    $lblContentDlg.Text = "Inhalt"
+    $lblContentDlg.Dock = "Top"
+    $pnlRightDlg.Controls.Add($lblContentDlg)
+
+    $txtSnippetContent = New-Object System.Windows.Forms.TextBox
+    $txtSnippetContent.Multiline = $true
+    $txtSnippetContent.ScrollBars = "Vertical"
+    $txtSnippetContent.Dock = "Fill"
+    $pnlRightDlg.Controls.Add($txtSnippetContent)
+
+    $pnlActionsDlg = New-Object System.Windows.Forms.FlowLayoutPanel
+    $pnlActionsDlg.Dock = "Bottom"
+    $pnlActionsDlg.Height = 42
+    $pnlActionsDlg.FlowDirection = "LeftToRight"
+    $pnlRightDlg.Controls.Add($pnlActionsDlg)
+
+    $btnNewSnip = New-Object System.Windows.Forms.Button
+    $btnNewSnip.Text = "Neu"
+    $btnSaveSnip = New-Object System.Windows.Forms.Button
+    $btnSaveSnip.Text = "Speichern"
+    $btnDeleteSnip = New-Object System.Windows.Forms.Button
+    $btnDeleteSnip.Text = "Löschen"
+    $btnInsertSnip = New-Object System.Windows.Forms.Button
+    $btnInsertSnip.Text = "Einfügen"
+    $btnCloseDlg = New-Object System.Windows.Forms.Button
+    $btnCloseDlg.Text = "Schließen"
+
+    $pnlActionsDlg.Controls.AddRange(@($btnNewSnip, $btnSaveSnip, $btnDeleteSnip, $btnInsertSnip, $btnCloseDlg))
+
+    $refreshSnipList = {
+        $list.Items.Clear()
+        foreach ($sn in $script:snippets) {
+            [void]$list.Items.Add($sn.title)
+        }
+    }
+
+    $loadSelected = {
+        if ($list.SelectedIndex -lt 0) { return }
+        $sel = $script:snippets[$list.SelectedIndex]
+        $txtSnippetTitle.Text = [string]$sel.title
+        $txtSnippetContent.Text = [string]$sel.content
+    }
+
+    $list.Add_SelectedIndexChanged($loadSelected)
+
+    $btnNewSnip.Add_Click({
+        $txtSnippetTitle.Text = ""
+        $txtSnippetContent.Text = ""
+        $list.ClearSelected()
+        $txtSnippetTitle.Focus()
+    })
+
+    $btnSaveSnip.Add_Click({
+        $title = $txtSnippetTitle.Text.Trim()
+        $content = $txtSnippetContent.Text
+        if ([string]::IsNullOrWhiteSpace($title) -or [string]::IsNullOrWhiteSpace($content)) {
+            [System.Windows.Forms.MessageBox]::Show("Titel und Inhalt sind erforderlich.", "Hinweis")
+            return
+        }
+
+        if ($list.SelectedIndex -ge 0) {
+            $script:snippets[$list.SelectedIndex] = [PSCustomObject]@{ title = $title; content = $content }
+        } else {
+            [void]$script:snippets.Add([PSCustomObject]@{ title = $title; content = $content })
+            $list.SelectedIndex = $script:snippets.Count - 1
+        }
+
+        Save-Snippets
+        & $refreshSnipList
+    })
+
+    $btnDeleteSnip.Add_Click({
+        if ($list.SelectedIndex -lt 0) { return }
+        $idx = $list.SelectedIndex
+        $confirm = [System.Windows.Forms.MessageBox]::Show("Textbaustein löschen?", "Löschen", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
+        if ($confirm -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+
+        $script:snippets.RemoveAt($idx)
+        Save-Snippets
+        & $refreshSnipList
+        $txtSnippetTitle.Text = ""
+        $txtSnippetContent.Text = ""
+    })
+
+    $btnInsertSnip.Add_Click({
+        if ($list.SelectedIndex -lt 0) { return }
+        $sel = $script:snippets[$list.SelectedIndex]
+        Insert-TextIntoActiveEditor -text ([string]$sel.content)
+        Save-TempSession
+        $dlg.Close()
+    })
+
+    $btnCloseDlg.Add_Click({ $dlg.Close() })
+
+    $list.Add_DoubleClick({
+        if ($list.SelectedIndex -lt 0) { return }
+        $sel = $script:snippets[$list.SelectedIndex]
+        Insert-TextIntoActiveEditor -text ([string]$sel.content)
+        Save-TempSession
+        $dlg.Close()
+    })
+
+    & $refreshSnipList
+    if ($list.Items.Count -gt 0) { $list.SelectedIndex = 0 }
+
+    [void]$dlg.ShowDialog($form)
+}
+
 function Save-TempSession {
     if (-not $tabPatients) { return }
 
@@ -161,7 +340,7 @@ function Add-PatientTab {
     $editor.WordWrap = $true
     $editor.Font = New-Object System.Drawing.Font("Segoe UI", 11)
     $editor.Text = $text
-    $editor.AcceptsTab = $false
+    $editor.AcceptsTab = $true
     $editor.HideSelection = $false
 
     $editor.Add_TextChanged({
@@ -197,20 +376,25 @@ function Add-PatientTab {
         }
 
         if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Tab) {
+            $token = $null
             if ($textValue.Contains('[') -and $textValue.Contains(']')) {
                 $token = if ($e.Shift) {
                     & $findPrevToken ($tb.SelectionStart)
                 } else {
                     & $findNextToken ($tb.SelectionStart + $tb.SelectionLength)
                 }
-
-                if ($token) {
-                    $tb.Focus()
-                    $tb.Select($token[0], ($token[1] - $token[0] + 1))
-                    $e.SuppressKeyPress = $true
-                    return
-                }
             }
+
+            if ($token) {
+                $tb.Focus()
+                $tb.Select($token[0], ($token[1] - $token[0] + 1))
+            } elseif (-not $e.Shift) {
+                $tb.SelectedText = "`t"
+            }
+
+            $e.SuppressKeyPress = $true
+            $e.Handled = $true
+            return
         }
 
         if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter -and $tb.SelectionLength -gt 1) {
@@ -226,6 +410,7 @@ function Add-PatientTab {
                     $tb.Select($token[0], ($token[1] - $token[0] + 1))
                 }
                 $e.SuppressKeyPress = $true
+                $e.Handled = $true
                 return
             }
         }
@@ -241,6 +426,7 @@ function Add-PatientTab {
                     $tb.Select($token[0], ($token[1] - $token[0] + 1))
                 }
                 $e.SuppressKeyPress = $true
+                $e.Handled = $true
                 return
             }
         }
@@ -249,6 +435,7 @@ function Add-PatientTab {
             $caret = $tb.SelectionStart + $tb.SelectionLength
             $tb.Select($caret, 0)
             $e.SuppressKeyPress = $true
+            $e.Handled = $true
         }
     })
 
@@ -436,6 +623,13 @@ $btnCloseTab.Height = 28
 $btnCloseTab.Location = New-Object System.Drawing.Point(195, 6)
 $pnlTabActions.Controls.Add($btnCloseTab)
 
+$btnTextbausteine = New-Object System.Windows.Forms.Button
+$btnTextbausteine.Text = "Textbausteine"
+$btnTextbausteine.Width = 110
+$btnTextbausteine.Height = 28
+$btnTextbausteine.Location = New-Object System.Drawing.Point(290, 6)
+$pnlTabActions.Controls.Add($btnTextbausteine)
+
 $tabPatients = New-Object System.Windows.Forms.TabControl
 $tabPatients.Dock = "Fill"
 $tabPatients.Multiline = $true
@@ -505,6 +699,7 @@ $btnRenameTab.Add_Click({
 })
 
 $btnCloseTab.Add_Click({ Close-ActiveTab })
+$btnTextbausteine.Add_Click({ Show-TextbausteineDialog })
 $tabPatients.Add_SelectedIndexChanged({ Save-TempSession })
 
 $btnCopy.Add_Click({
