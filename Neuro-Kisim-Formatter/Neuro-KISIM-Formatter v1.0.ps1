@@ -24,6 +24,9 @@ $script:snippets = New-Object System.Collections.ArrayList
 $script:globalFont = "Arial"
 $script:tabCounter = 1
 $script:isLoadingSession = $false
+$script:textbausteinForm = $null
+$script:rulesForm = $null
+$script:sidebarFilteredSnippets = @()
 
 # Load Config
 if (Test-Path $script:configFile) {
@@ -44,15 +47,25 @@ if (Test-Path $script:snippetFile) {
         $snippetJson = Get-Content $script:snippetFile -Raw | ConvertFrom-Json
         foreach ($snip in $snippetJson) {
             if (-not [string]::IsNullOrWhiteSpace($snip.title) -and -not [string]::IsNullOrWhiteSpace($snip.content)) {
-                [void]$script:snippets.Add([PSCustomObject]@{ title = [string]$snip.title; content = [string]$snip.content })
+                $cats = @()
+                if ($snip.categories) {
+                    foreach ($c in $snip.categories) {
+                        if (-not [string]::IsNullOrWhiteSpace([string]$c)) { $cats += ([string]$c).Trim() }
+                    }
+                } elseif ($snip.category) {
+                    $cats += ([string]$snip.category).Trim()
+                }
+                if ($cats.Count -eq 0) { $cats = @('Allgemein') }
+
+                [void]$script:snippets.Add([PSCustomObject]@{ title = [string]$snip.title; content = [string]$snip.content; categories = $cats })
             }
         }
     } catch {}
 }
 
 if ($script:snippets.Count -eq 0) {
-    [void]$script:snippets.Add([PSCustomObject]@{ title = "o.B."; content = "o.B." })
-    [void]$script:snippets.Add([PSCustomObject]@{ title = "Pat. berichtet"; content = "Der Patient berichtet über " })
+    [void]$script:snippets.Add([PSCustomObject]@{ title = "o.B."; content = "o.B."; categories = @("Allgemein") })
+    [void]$script:snippets.Add([PSCustomObject]@{ title = "Pat. berichtet"; content = "Der Patient berichtet über "; categories = @("Allgemein") })
 }
 
 # --- 3. RTF Generation Logic ---
@@ -144,7 +157,64 @@ function Get-ActiveEditor {
 }
 
 function Save-Snippets {
-    $script:snippets | ConvertTo-Json -Depth 4 | Set-Content -Path $script:snippetFile -Encoding UTF8
+    $script:snippets | ConvertTo-Json -Depth 5 | Set-Content -Path $script:snippetFile -Encoding UTF8
+}
+
+function Get-SnippetCategories {
+    $cats = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($sn in $script:snippets) {
+        if ($sn.categories) {
+            foreach ($c in $sn.categories) {
+                if (-not [string]::IsNullOrWhiteSpace([string]$c)) {
+                    [void]$cats.Add(([string]$c).Trim())
+                }
+            }
+        }
+    }
+    return $cats | Sort-Object
+}
+
+function Update-SnippetFilterOptions {
+    if (-not $cbSnippetFilter) { return }
+
+    $selected = [string]$cbSnippetFilter.SelectedItem
+    $cbSnippetFilter.Items.Clear()
+    [void]$cbSnippetFilter.Items.Add('All')
+    foreach ($cat in (Get-SnippetCategories)) {
+        [void]$cbSnippetFilter.Items.Add($cat)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($selected) -and $cbSnippetFilter.Items.Contains($selected)) {
+        $cbSnippetFilter.SelectedItem = $selected
+    } else {
+        $cbSnippetFilter.SelectedIndex = 0
+    }
+}
+
+function Refresh-SnippetSidebar {
+    if (-not $lstSnippetSidebar) { return }
+
+    $lstSnippetSidebar.Items.Clear()
+    $script:sidebarFilteredSnippets = @()
+
+    $selectedFilter = if ($cbSnippetFilter -and $cbSnippetFilter.SelectedItem) { [string]$cbSnippetFilter.SelectedItem } else { 'All' }
+
+    foreach ($sn in $script:snippets) {
+        $matches = $true
+        if ($selectedFilter -ne 'All') {
+            $matches = $false
+            if ($sn.categories) {
+                foreach ($c in $sn.categories) {
+                    if ([string]$c -eq $selectedFilter) { $matches = $true; break }
+                }
+            }
+        }
+
+        if ($matches) {
+            $script:sidebarFilteredSnippets += $sn
+            [void]$lstSnippetSidebar.Items.Add([string]$sn.title)
+        }
+    }
 }
 
 function Insert-TextIntoActiveEditor {
@@ -167,15 +237,22 @@ function Insert-TextIntoActiveEditor {
 }
 
 function Show-TextbausteineDialog {
+    if ($script:textbausteinForm -and -not $script:textbausteinForm.IsDisposed) {
+        $script:textbausteinForm.BringToFront()
+        $script:textbausteinForm.Focus()
+        return
+    }
+
     $dlg = New-Object System.Windows.Forms.Form
-    $dlg.Text = "Textbausteine"
-    $dlg.Size = New-Object System.Drawing.Size(720, 500)
-    $dlg.StartPosition = "CenterParent"
+    $script:textbausteinForm = $dlg
+    $dlg.Text = "Textbausteine-Editor"
+    $dlg.Size = New-Object System.Drawing.Size(760, 520)
+    $dlg.StartPosition = "CenterScreen"
 
     $splitDlg = New-Object System.Windows.Forms.SplitContainer
     $splitDlg.Dock = "Fill"
     $splitDlg.FixedPanel = "Panel1"
-    $splitDlg.SplitterDistance = 240
+    $splitDlg.SplitterDistance = 250
     $dlg.Controls.Add($splitDlg)
 
     $list = New-Object System.Windows.Forms.ListBox
@@ -194,7 +271,7 @@ function Show-TextbausteineDialog {
 
     $pnlFields = New-Object System.Windows.Forms.Panel
     $pnlFields.Dock = "Top"
-    $pnlFields.Height = 72
+    $pnlFields.Height = 120
     $pnlRightDlg.Controls.Add($pnlFields)
 
     $lblTitleDlg = New-Object System.Windows.Forms.Label
@@ -205,14 +282,26 @@ function Show-TextbausteineDialog {
 
     $txtSnippetTitle = New-Object System.Windows.Forms.TextBox
     $txtSnippetTitle.Location = New-Object System.Drawing.Point(0, 22)
-    $txtSnippetTitle.Width = 430
+    $txtSnippetTitle.Width = 460
     $txtSnippetTitle.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $pnlFields.Controls.Add($txtSnippetTitle)
+
+    $lblCategoriesDlg = New-Object System.Windows.Forms.Label
+    $lblCategoriesDlg.Text = "Kategorien / Tags (Komma-getrennt)"
+    $lblCategoriesDlg.AutoSize = $true
+    $lblCategoriesDlg.Location = New-Object System.Drawing.Point(0, 52)
+    $pnlFields.Controls.Add($lblCategoriesDlg)
+
+    $txtSnippetCategories = New-Object System.Windows.Forms.TextBox
+    $txtSnippetCategories.Location = New-Object System.Drawing.Point(0, 70)
+    $txtSnippetCategories.Width = 460
+    $txtSnippetCategories.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
+    $pnlFields.Controls.Add($txtSnippetCategories)
 
     $lblContentDlg = New-Object System.Windows.Forms.Label
     $lblContentDlg.Text = "Inhalt"
     $lblContentDlg.AutoSize = $true
-    $lblContentDlg.Location = New-Object System.Drawing.Point(0, 50)
+    $lblContentDlg.Location = New-Object System.Drawing.Point(0, 98)
     $pnlFields.Controls.Add($lblContentDlg)
 
     $txtSnippetContent = New-Object System.Windows.Forms.TextBox
@@ -221,24 +310,16 @@ function Show-TextbausteineDialog {
     $txtSnippetContent.Dock = "Fill"
     $pnlRightDlg.Controls.Add($txtSnippetContent)
 
-    $btnNewSnip = New-Object System.Windows.Forms.Button
-    $btnNewSnip.Text = "Neu"
-    $btnSaveSnip = New-Object System.Windows.Forms.Button
-    $btnSaveSnip.Text = "Speichern"
-    $btnDeleteSnip = New-Object System.Windows.Forms.Button
-    $btnDeleteSnip.Text = "Löschen"
-    $btnInsertSnip = New-Object System.Windows.Forms.Button
-    $btnInsertSnip.Text = "Einfügen"
-    $btnCloseDlg = New-Object System.Windows.Forms.Button
-    $btnCloseDlg.Text = "Schließen"
-
+    $btnNewSnip = New-Object System.Windows.Forms.Button; $btnNewSnip.Text = "Neu"
+    $btnSaveSnip = New-Object System.Windows.Forms.Button; $btnSaveSnip.Text = "Speichern"
+    $btnDeleteSnip = New-Object System.Windows.Forms.Button; $btnDeleteSnip.Text = "Löschen"
+    $btnInsertSnip = New-Object System.Windows.Forms.Button; $btnInsertSnip.Text = "Einfügen"
+    $btnCloseDlg = New-Object System.Windows.Forms.Button; $btnCloseDlg.Text = "Schließen"
     $pnlActionsDlg.Controls.AddRange(@($btnNewSnip, $btnSaveSnip, $btnDeleteSnip, $btnInsertSnip, $btnCloseDlg))
 
     $refreshSnipList = {
         $list.Items.Clear()
-        foreach ($sn in $script:snippets) {
-            [void]$list.Items.Add($sn.title)
-        }
+        foreach ($sn in $script:snippets) { [void]$list.Items.Add($sn.title) }
     }
 
     $loadSelected = {
@@ -246,13 +327,15 @@ function Show-TextbausteineDialog {
         $sel = $script:snippets[$list.SelectedIndex]
         $txtSnippetTitle.Text = [string]$sel.title
         $txtSnippetContent.Text = [string]$sel.content
+        $txtSnippetCategories.Text = if ($sel.categories) { ($sel.categories -join ', ') } else { '' }
     }
 
     $list.Add_SelectedIndexChanged($loadSelected)
 
     $btnNewSnip.Add_Click({
-        $txtSnippetTitle.Text = ""
-        $txtSnippetContent.Text = ""
+        $txtSnippetTitle.Text = ''
+        $txtSnippetContent.Text = ''
+        $txtSnippetCategories.Text = ''
         $list.ClearSelected()
         $txtSnippetTitle.Focus()
     })
@@ -265,15 +348,26 @@ function Show-TextbausteineDialog {
             return
         }
 
+        $cats = @()
+        foreach ($part in ($txtSnippetCategories.Text -split ',')) {
+            $tag = $part.Trim()
+            if (-not [string]::IsNullOrWhiteSpace($tag) -and ($cats -notcontains $tag)) { $cats += $tag }
+        }
+        if ($cats.Count -eq 0) { $cats = @('Allgemein') }
+
+        $obj = [PSCustomObject]@{ title = $title; content = $content; categories = $cats }
+
         if ($list.SelectedIndex -ge 0) {
-            $script:snippets[$list.SelectedIndex] = [PSCustomObject]@{ title = $title; content = $content }
+            $script:snippets[$list.SelectedIndex] = $obj
         } else {
-            [void]$script:snippets.Add([PSCustomObject]@{ title = $title; content = $content })
+            [void]$script:snippets.Add($obj)
             $list.SelectedIndex = $script:snippets.Count - 1
         }
 
         Save-Snippets
         & $refreshSnipList
+        Update-SnippetFilterOptions
+        Refresh-SnippetSidebar
     })
 
     $btnDeleteSnip.Add_Click({
@@ -285,8 +379,11 @@ function Show-TextbausteineDialog {
         $script:snippets.RemoveAt($idx)
         Save-Snippets
         & $refreshSnipList
-        $txtSnippetTitle.Text = ""
-        $txtSnippetContent.Text = ""
+        Update-SnippetFilterOptions
+        Refresh-SnippetSidebar
+        $txtSnippetTitle.Text = ''
+        $txtSnippetContent.Text = ''
+        $txtSnippetCategories.Text = ''
     })
 
     $btnInsertSnip.Add_Click({
@@ -294,7 +391,6 @@ function Show-TextbausteineDialog {
         $sel = $script:snippets[$list.SelectedIndex]
         Insert-TextIntoActiveEditor -text ([string]$sel.content)
         Save-TempSession
-        $dlg.Close()
     })
 
     $btnCloseDlg.Add_Click({ $dlg.Close() })
@@ -304,13 +400,106 @@ function Show-TextbausteineDialog {
         $sel = $script:snippets[$list.SelectedIndex]
         Insert-TextIntoActiveEditor -text ([string]$sel.content)
         Save-TempSession
-        $dlg.Close()
     })
+
+    $dlg.Add_FormClosed({ $script:textbausteinForm = $null })
 
     & $refreshSnipList
     if ($list.Items.Count -gt 0) { $list.SelectedIndex = 0 }
 
-    [void]$dlg.ShowDialog($form)
+    $dlg.Show()
+}
+
+function Show-RulesEditor {
+    if ($script:rulesForm -and -not $script:rulesForm.IsDisposed) {
+        $script:rulesForm.BringToFront()
+        $script:rulesForm.Focus()
+        return
+    }
+
+    $dlg = New-Object System.Windows.Forms.Form
+    $script:rulesForm = $dlg
+    $dlg.Text = 'Regel-Editor'
+    $dlg.Size = New-Object System.Drawing.Size(520, 520)
+    $dlg.StartPosition = 'CenterScreen'
+
+    $pnl = New-Object System.Windows.Forms.Panel
+    $pnl.Dock = 'Fill'
+    $pnl.Padding = New-Object System.Windows.Forms.Padding(10)
+    $dlg.Controls.Add($pnl)
+
+    $lst = New-Object System.Windows.Forms.ListBox
+    $lst.Dock = 'Fill'
+    $pnl.Controls.Add($lst)
+
+    $grp = New-Object System.Windows.Forms.GroupBox
+    $grp.Text = 'Regel hinzufügen / bearbeiten'
+    $grp.Dock = 'Top'
+    $grp.Height = 140
+    $pnl.Controls.Add($grp)
+
+    $txtK = New-Object System.Windows.Forms.TextBox
+    $txtK.Location = New-Object System.Drawing.Point(10, 26)
+    $txtK.Width = 470
+    $grp.Controls.Add($txtK)
+
+    $cbS = New-Object System.Windows.Forms.ComboBox
+    $cbS.Location = New-Object System.Drawing.Point(10, 56)
+    $cbS.Width = 470
+    $cbS.Items.AddRange(@('bold','underline','italic','highlight','none'))
+    $cbS.SelectedIndex = 0
+    $grp.Controls.Add($cbS)
+
+    $btnAddR = New-Object System.Windows.Forms.Button
+    $btnAddR.Text = 'Regel hinzufügen'
+    $btnAddR.Location = New-Object System.Drawing.Point(10, 90)
+    $btnAddR.Width = 150
+    $grp.Controls.Add($btnAddR)
+
+    $btnDelR = New-Object System.Windows.Forms.Button
+    $btnDelR.Text = 'Ausgewählte Regel löschen'
+    $btnDelR.Dock = 'Bottom'
+    $btnDelR.Height = 32
+    $pnl.Controls.Add($btnDelR)
+
+    $btnSaveR = New-Object System.Windows.Forms.Button
+    $btnSaveR.Text = 'Regeln speichern'
+    $btnSaveR.Dock = 'Bottom'
+    $btnSaveR.Height = 36
+    $pnl.Controls.Add($btnSaveR)
+
+    $refreshRulesList = {
+        $lst.Items.Clear()
+        foreach ($r in $script:rules) { [void]$lst.Items.Add("$($r.style.ToUpper()) - '$($r.keyword)'") }
+    }
+
+    $btnAddR.Add_Click({
+        if (-not [string]::IsNullOrWhiteSpace($txtK.Text)) {
+            [void]$script:rules.Add(@{ keyword = $txtK.Text; style = $cbS.Text })
+            & $refreshRulesList
+            $txtK.Text = ''
+            $txtK.Focus()
+        }
+    })
+
+    $btnDelR.Add_Click({
+        if ($lst.SelectedIndex -ge 0) {
+            $script:rules.RemoveAt($lst.SelectedIndex)
+            & $refreshRulesList
+        }
+    })
+
+    $btnSaveR.Add_Click({
+        $script:globalFont = $cbFont.Text
+        $export = @{ font = $script:globalFont; rules = $script:rules }
+        $json = $export | ConvertTo-Json -Depth 3
+        $json | Set-Content $script:configFile -Encoding UTF8
+        [System.Windows.Forms.MessageBox]::Show('Regeln gespeichert!', 'Saved')
+    })
+
+    $dlg.Add_FormClosed({ $script:rulesForm = $null })
+    & $refreshRulesList
+    $dlg.Show()
 }
 
 function Save-TempSession {
@@ -512,7 +701,7 @@ function Load-TempSession {
 
 # --- 4. GUI SETUP ---
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "Neuro-KISIM-Formatter V1.0"
+$form.Text = "Neuro-KISIM-Formatter V1.2"
 $form.Size = New-Object System.Drawing.Size(1100, 700)
 $form.StartPosition = "CenterScreen"
 $form.Font = New-Object System.Drawing.Font("Segoe UI", 9)
@@ -529,62 +718,61 @@ $form.Controls.Add($split)
 $pnlLeft = $split.Panel1
 $pnlLeft.Padding = New-Object System.Windows.Forms.Padding(10)
 
-$btnSave = New-Object System.Windows.Forms.Button
-$btnSave.Text = "Save Settings"
-$btnSave.Dock = "Bottom"
-$btnSave.Height = 35
-$btnSave.BackColor = [System.Drawing.Color]::LightGray
-$pnlLeft.Controls.Add($btnSave)
+$lblSnipTitle = New-Object System.Windows.Forms.Label
+$lblSnipTitle.Text = "Textbausteine"
+$lblSnipTitle.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+$lblSnipTitle.AutoSize = $true
+$lblSnipTitle.Dock = "Top"
+$pnlLeft.Controls.Add($lblSnipTitle)
 
-$btnRemove = New-Object System.Windows.Forms.Button
-$btnRemove.Text = "Remove Selected Rule"
-$btnRemove.Dock = "Bottom"
-$btnRemove.Height = 30
-$btnRemove.FlatStyle = "Flat"
-$pnlLeft.Controls.Add($btnRemove)
+$lblFilter = New-Object System.Windows.Forms.Label
+$lblFilter.Text = "Filter"
+$lblFilter.Dock = "Top"
+$lblFilter.Height = 18
+$pnlLeft.Controls.Add($lblFilter)
 
-$lblSpacer = New-Object System.Windows.Forms.Label; $lblSpacer.Height = 10; $lblSpacer.Dock = "Bottom"; $pnlLeft.Controls.Add($lblSpacer)
+$cbSnippetFilter = New-Object System.Windows.Forms.ComboBox
+$cbSnippetFilter.Dock = "Top"
+$cbSnippetFilter.DropDownStyle = "DropDownList"
+$pnlLeft.Controls.Add($cbSnippetFilter)
 
-$lblTitle = New-Object System.Windows.Forms.Label
-$lblTitle.Text = "Configuration"
-$lblTitle.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
-$lblTitle.AutoSize = $true
-$lblTitle.Dock = "Top"
-$pnlLeft.Controls.Add($lblTitle)
+$btnSnippetEditor = New-Object System.Windows.Forms.Button
+$btnSnippetEditor.Text = "Textbaustein-Editor"
+$btnSnippetEditor.Dock = "Top"
+$btnSnippetEditor.Height = 30
+$pnlLeft.Controls.Add($btnSnippetEditor)
 
-$grpFont = New-Object System.Windows.Forms.GroupBox; $grpFont.Text = "Global Font"; $grpFont.Height = 60; $grpFont.Dock = "Top"; $pnlLeft.Controls.Add($grpFont)
+$btnRulesEditor = New-Object System.Windows.Forms.Button
+$btnRulesEditor.Text = "Regel-Editor"
+$btnRulesEditor.Dock = "Top"
+$btnRulesEditor.Height = 30
+$pnlLeft.Controls.Add($btnRulesEditor)
+
+$grpFont = New-Object System.Windows.Forms.GroupBox
+$grpFont.Text = "Global Font"
+$grpFont.Height = 60
+$grpFont.Dock = "Bottom"
+$pnlLeft.Controls.Add($grpFont)
+
 $cbFont = New-Object System.Windows.Forms.ComboBox
 $cbFont.Items.AddRange(@("Arial", "Times New Roman", "Verdana", "Courier New", "Tahoma"))
 $cbFont.Text = $script:globalFont
-$cbFont.Location = New-Object System.Drawing.Point(10, 25); $cbFont.Width = 240
+$cbFont.Location = New-Object System.Drawing.Point(10, 25)
+$cbFont.Width = 240
 $grpFont.Controls.Add($cbFont)
 
-$grpRule = New-Object System.Windows.Forms.GroupBox; $grpRule.Text = "Add Rule (supports *, ?, $, s. Anleitung)"; $grpRule.Height = 130; $grpRule.Dock = "Top"; $pnlLeft.Controls.Add($grpRule)
+$btnSaveFont = New-Object System.Windows.Forms.Button
+$btnSaveFont.Text = "Save Font + Rules"
+$btnSaveFont.Dock = "Bottom"
+$btnSaveFont.Height = 34
+$btnSaveFont.BackColor = [System.Drawing.Color]::LightGray
+$pnlLeft.Controls.Add($btnSaveFont)
 
-$txtKey = New-Object System.Windows.Forms.TextBox
-$txtKey.Location = New-Object System.Drawing.Point(10, 25); $txtKey.Width = 240
-$grpRule.Controls.Add($txtKey)
-
-$cbStyle = New-Object System.Windows.Forms.ComboBox
-$cbStyle.Location = New-Object System.Drawing.Point(10, 55); $cbStyle.Width = 240
-$cbStyle.Items.AddRange(@("bold", "underline", "italic", "highlight", "none"))
-$cbStyle.SelectedIndex = 0
-$grpRule.Controls.Add($cbStyle)
-
-$btnAdd = New-Object System.Windows.Forms.Button
-$btnAdd.Text = "Add Rule"
-$btnAdd.Location = New-Object System.Drawing.Point(10, 90); $btnAdd.Width = 240; $btnAdd.BackColor = [System.Drawing.Color]::WhiteSmoke
-$grpRule.Controls.Add($btnAdd)
-
-$lblSpacer2 = New-Object System.Windows.Forms.Label; $lblSpacer2.Height = 10; $lblSpacer2.Dock = "Top"; $pnlLeft.Controls.Add($lblSpacer2)
-
-$lblListHeader = New-Object System.Windows.Forms.Label; $lblListHeader.Text = "Active Rules:"; $lblListHeader.Dock = "Top"; $lblListHeader.Height = 20; $pnlLeft.Controls.Add($lblListHeader)
-
-$lstRules = New-Object System.Windows.Forms.ListBox
-$lstRules.Dock = "Fill"
-$lstRules.IntegralHeight = $false
-$pnlLeft.Controls.Add($lstRules)
-$lstRules.BringToFront()
+$lstSnippetSidebar = New-Object System.Windows.Forms.ListBox
+$lstSnippetSidebar.Dock = "Fill"
+$lstSnippetSidebar.IntegralHeight = $false
+$pnlLeft.Controls.Add($lstSnippetSidebar)
+$lstSnippetSidebar.BringToFront()
 
 # === RIGHT PANEL ===
 $pnlRight = $split.Panel2
@@ -636,13 +824,6 @@ $btnCloseTab.Height = 28
 $btnCloseTab.Location = New-Object System.Drawing.Point(195, 6)
 $pnlTabActions.Controls.Add($btnCloseTab)
 
-$btnTextbausteine = New-Object System.Windows.Forms.Button
-$btnTextbausteine.Text = "Textbausteine"
-$btnTextbausteine.Width = 110
-$btnTextbausteine.Height = 28
-$btnTextbausteine.Location = New-Object System.Drawing.Point(290, 6)
-$pnlTabActions.Controls.Add($btnTextbausteine)
-
 $tabPatients = New-Object System.Windows.Forms.TabControl
 $tabPatients.Dock = "Fill"
 $tabPatients.Multiline = $true
@@ -651,36 +832,25 @@ $tabPatients.BringToFront()
 
 # --- 5. LOGIC & EVENTS ---
 
-function Refresh-List {
-    $lstRules.Items.Clear()
-    foreach ($r in $script:rules) {
-        $lstRules.Items.Add("$($r.style.ToUpper()) - '$($r.keyword)'")
-    }
-}
-
-$btnAdd.Add_Click({
-    if (-not [string]::IsNullOrWhiteSpace($txtKey.Text)) {
-        $newRule = @{keyword=$txtKey.Text; style=$cbStyle.Text}
-        [void]$script:rules.Add($newRule)
-        Refresh-List
-        $txtKey.Text = ""
-        $txtKey.Focus()
-    }
-})
-
-$btnRemove.Add_Click({
-    if ($lstRules.SelectedIndex -ge 0) {
-        $script:rules.RemoveAt($lstRules.SelectedIndex)
-        Refresh-List
-    }
-})
-
-$btnSave.Add_Click({
+$btnSaveFont.Add_Click({
     $script:globalFont = $cbFont.Text
     $export = @{ font = $script:globalFont; rules = $script:rules }
     $json = $export | ConvertTo-Json -Depth 3
     $json | Set-Content $script:configFile -Encoding UTF8
-    [System.Windows.Forms.MessageBox]::Show("Settings saved!", "Saved")
+    [System.Windows.Forms.MessageBox]::Show("Einstellungen gespeichert!", "Saved")
+})
+
+$btnSnippetEditor.Add_Click({ Show-TextbausteineDialog })
+$btnRulesEditor.Add_Click({ Show-RulesEditor })
+
+$cbSnippetFilter.Add_SelectedIndexChanged({ Refresh-SnippetSidebar })
+
+$lstSnippetSidebar.Add_Click({
+    $idx = $lstSnippetSidebar.SelectedIndex
+    if ($idx -lt 0 -or $idx -ge $script:sidebarFilteredSnippets.Count) { return }
+    $snippet = $script:sidebarFilteredSnippets[$idx]
+    Insert-TextIntoActiveEditor -text ([string]$snippet.content)
+    Save-TempSession
 })
 
 $btnNewTab.Add_Click({
@@ -712,7 +882,6 @@ $btnRenameTab.Add_Click({
 })
 
 $btnCloseTab.Add_Click({ Close-ActiveTab })
-$btnTextbausteine.Add_Click({ Show-TextbausteineDialog })
 $tabPatients.Add_SelectedIndexChanged({ Save-TempSession })
 
 $btnCopy.Add_Click({
@@ -769,7 +938,8 @@ $form.Add_FormClosing({
 })
 
 # --- Run ---
-Refresh-List
+Update-SnippetFilterOptions
+Refresh-SnippetSidebar
 $form.Add_Shown({
     Load-TempSession
     $editor = Get-ActiveEditor
@@ -778,7 +948,7 @@ $form.Add_Shown({
 $form.Add_Load({ $split.SplitterDistance = 320 })
 Clear-Host
 Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
-Write-Host "   Neuro-KISIM-Formatter V1.0" -ForegroundColor White
+Write-Host "   Neuro-KISIM-Formatter V1.2" -ForegroundColor White
 Write-Host "   Created with ♥ by Nicolò " -ForegroundColor White
 Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
 Write-Host " "
