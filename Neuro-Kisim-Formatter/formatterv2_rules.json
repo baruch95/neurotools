@@ -1,0 +1,213 @@
+﻿{
+    "rules":  [
+                  {
+                      "style":  "underline",
+                      "keyword":  "Diagnostisch:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "Fahreignung:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Medikation:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Hirnnerven:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Motorik:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Koordination:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Zusammenfassend:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Nächste Kontrolle:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Reflexe:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Sensibilität:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Sozialanamnese:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Familienanamnese:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Persönliche Anamnese:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Therapeutisch:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Stand und Gang:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Neurologischer Untersuchungsbefund$"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Zusatzdiagnostik$"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Beurteilung und Procedere$"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Procedere$"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Prozedere$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Psychisch:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Verhütung:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Anamnese$"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Vorbefunde$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "cMRI vom*:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Beurteilung$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Schwindelspezifische Untersuchungen:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Zusatzuntersuchungen$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "MRI Neurocranium vom ??.??.????:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "EEG vom ??.??.????:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Exploration der Hirnnerven:$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Sprache:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Motorik:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Sensorik:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Augen:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Funktionelle neurologische Augenuntersuchung:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Untersuchung mit der Frenzelbrille:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "Neurologische Exploration:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Allgemeiner Neurostatus:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Paresegradierung/Muskelstatus:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Koordination:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Klinisch-neurologischer Untersuchungsbefund$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Systemanamnese:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Labor vom ??.??.????:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "MoCA vom ??.??.????:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Hirnnerven (ausser unten aufgeführt):"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Okulomotorik (*):"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Nystagmen:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Lagerungsmanöver:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Neurologische Ohruntersuchung und vestibulookuläre und -cochleäre Untersuchung:$"
+                  },
+                  {
+                      "style":  "highlight",
+                      "keyword":  "$Informationen Sekretariat (immer angeben!)$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Neurologische Ohruntersuchung und vestibulookuläre und -cochleäre Untersuchung: "
+                  }
+              ],
+    "font":  "Arial"
+}
