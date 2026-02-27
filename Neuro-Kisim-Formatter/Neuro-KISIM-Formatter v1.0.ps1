@@ -330,7 +330,7 @@ function Show-TextbausteineDialog {
         $txtSnippetCategories.Text = if ($sel.categories) { ($sel.categories -join ', ') } else { '' }
     }
 
-    $list.Add_SelectedIndexChanged($loadSelected)
+    $list.Add_SelectedIndexChanged($loadSelected.GetNewClosure())
 
     $btnNewSnip.Add_Click({
         $txtSnippetTitle.Text = ''
@@ -338,7 +338,7 @@ function Show-TextbausteineDialog {
         $txtSnippetCategories.Text = ''
         $list.ClearSelected()
         $txtSnippetTitle.Focus()
-    })
+    }.GetNewClosure())
 
     $btnSaveSnip.Add_Click({
         $title = $txtSnippetTitle.Text.Trim()
@@ -368,7 +368,7 @@ function Show-TextbausteineDialog {
         & $refreshSnipList
         Update-SnippetFilterOptions
         Refresh-SnippetSidebar
-    })
+    }.GetNewClosure())
 
     $btnDeleteSnip.Add_Click({
         if ($list.SelectedIndex -lt 0) { return }
@@ -384,25 +384,25 @@ function Show-TextbausteineDialog {
         $txtSnippetTitle.Text = ''
         $txtSnippetContent.Text = ''
         $txtSnippetCategories.Text = ''
-    })
+    }.GetNewClosure())
 
     $btnInsertSnip.Add_Click({
         if ($list.SelectedIndex -lt 0) { return }
         $sel = $script:snippets[$list.SelectedIndex]
         Insert-TextIntoActiveEditor -text ([string]$sel.content)
         Save-TempSession
-    })
+    }.GetNewClosure())
 
-    $btnCloseDlg.Add_Click({ $dlg.Close() })
+    $btnCloseDlg.Add_Click({ $dlg.Close() }.GetNewClosure())
 
     $list.Add_DoubleClick({
         if ($list.SelectedIndex -lt 0) { return }
         $sel = $script:snippets[$list.SelectedIndex]
         Insert-TextIntoActiveEditor -text ([string]$sel.content)
         Save-TempSession
-    })
+    }.GetNewClosure())
 
-    $dlg.Add_FormClosed({ $script:textbausteinForm = $null })
+    $dlg.Add_FormClosed({ $script:textbausteinForm = $null }.GetNewClosure())
 
     & $refreshSnipList
     if ($list.Items.Count -gt 0) { $list.SelectedIndex = 0 }
@@ -420,7 +420,7 @@ function Show-RulesEditor {
     $dlg = New-Object System.Windows.Forms.Form
     $script:rulesForm = $dlg
     $dlg.Text = 'Regel-Editor'
-    $dlg.Size = New-Object System.Drawing.Size(520, 520)
+    $dlg.Size = New-Object System.Drawing.Size(520, 560)
     $dlg.StartPosition = 'CenterScreen'
 
     $pnl = New-Object System.Windows.Forms.Panel
@@ -462,8 +462,20 @@ function Show-RulesEditor {
     $btnDelR.Height = 32
     $pnl.Controls.Add($btnDelR)
 
+    $lblFontR = New-Object System.Windows.Forms.Label
+    $lblFontR.Text = 'Global Font'
+    $lblFontR.Dock = 'Bottom'
+    $lblFontR.Height = 18
+    $pnl.Controls.Add($lblFontR)
+
+    $cbFontR = New-Object System.Windows.Forms.ComboBox
+    $cbFontR.Dock = 'Bottom'
+    $cbFontR.Items.AddRange(@('Arial','Times New Roman','Verdana','Courier New','Tahoma'))
+    $cbFontR.Text = $script:globalFont
+    $pnl.Controls.Add($cbFontR)
+
     $btnSaveR = New-Object System.Windows.Forms.Button
-    $btnSaveR.Text = 'Regeln speichern'
+    $btnSaveR.Text = 'Regeln + Font speichern'
     $btnSaveR.Dock = 'Bottom'
     $btnSaveR.Height = 36
     $pnl.Controls.Add($btnSaveR)
@@ -480,24 +492,24 @@ function Show-RulesEditor {
             $txtK.Text = ''
             $txtK.Focus()
         }
-    })
+    }.GetNewClosure())
 
     $btnDelR.Add_Click({
         if ($lst.SelectedIndex -ge 0) {
             $script:rules.RemoveAt($lst.SelectedIndex)
             & $refreshRulesList
         }
-    })
+    }.GetNewClosure())
 
     $btnSaveR.Add_Click({
-        $script:globalFont = $cbFont.Text
+        $script:globalFont = $cbFontR.Text
         $export = @{ font = $script:globalFont; rules = $script:rules }
         $json = $export | ConvertTo-Json -Depth 3
         $json | Set-Content $script:configFile -Encoding UTF8
-        [System.Windows.Forms.MessageBox]::Show('Regeln gespeichert!', 'Saved')
-    })
+        [System.Windows.Forms.MessageBox]::Show('Regeln und Font gespeichert!', 'Saved')
+    }.GetNewClosure())
 
-    $dlg.Add_FormClosed({ $script:rulesForm = $null })
+    $dlg.Add_FormClosed({ $script:rulesForm = $null }.GetNewClosure())
     & $refreshRulesList
     $dlg.Show()
 }
@@ -748,26 +760,6 @@ $btnRulesEditor.Dock = "Top"
 $btnRulesEditor.Height = 30
 $pnlLeft.Controls.Add($btnRulesEditor)
 
-$grpFont = New-Object System.Windows.Forms.GroupBox
-$grpFont.Text = "Global Font"
-$grpFont.Height = 60
-$grpFont.Dock = "Bottom"
-$pnlLeft.Controls.Add($grpFont)
-
-$cbFont = New-Object System.Windows.Forms.ComboBox
-$cbFont.Items.AddRange(@("Arial", "Times New Roman", "Verdana", "Courier New", "Tahoma"))
-$cbFont.Text = $script:globalFont
-$cbFont.Location = New-Object System.Drawing.Point(10, 25)
-$cbFont.Width = 240
-$grpFont.Controls.Add($cbFont)
-
-$btnSaveFont = New-Object System.Windows.Forms.Button
-$btnSaveFont.Text = "Save Font + Rules"
-$btnSaveFont.Dock = "Bottom"
-$btnSaveFont.Height = 34
-$btnSaveFont.BackColor = [System.Drawing.Color]::LightGray
-$pnlLeft.Controls.Add($btnSaveFont)
-
 $lstSnippetSidebar = New-Object System.Windows.Forms.ListBox
 $lstSnippetSidebar.Dock = "Fill"
 $lstSnippetSidebar.IntegralHeight = $false
@@ -832,20 +824,12 @@ $tabPatients.BringToFront()
 
 # --- 5. LOGIC & EVENTS ---
 
-$btnSaveFont.Add_Click({
-    $script:globalFont = $cbFont.Text
-    $export = @{ font = $script:globalFont; rules = $script:rules }
-    $json = $export | ConvertTo-Json -Depth 3
-    $json | Set-Content $script:configFile -Encoding UTF8
-    [System.Windows.Forms.MessageBox]::Show("Einstellungen gespeichert!", "Saved")
-})
-
 $btnSnippetEditor.Add_Click({ Show-TextbausteineDialog })
 $btnRulesEditor.Add_Click({ Show-RulesEditor })
 
 $cbSnippetFilter.Add_SelectedIndexChanged({ Refresh-SnippetSidebar })
 
-$lstSnippetSidebar.Add_Click({
+$lstSnippetSidebar.Add_DoubleClick({
     $idx = $lstSnippetSidebar.SelectedIndex
     if ($idx -lt 0 -or $idx -ge $script:sidebarFilteredSnippets.Count) { return }
     $snippet = $script:sidebarFilteredSnippets[$idx]
@@ -890,7 +874,6 @@ $btnCopy.Add_Click({
 
     $raw = $editor.Text
     if ([string]::IsNullOrWhiteSpace($raw)) { return }
-    $script:globalFont = $cbFont.Text
 
     $rtfData = Get-RTF -text $raw
 
