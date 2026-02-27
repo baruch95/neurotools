@@ -186,31 +186,40 @@ function Show-TextbausteineDialog {
     $pnlRightDlg.Dock = "Fill"
     $splitDlg.Panel2.Controls.Add($pnlRightDlg)
 
+    $pnlActionsDlg = New-Object System.Windows.Forms.FlowLayoutPanel
+    $pnlActionsDlg.Dock = "Bottom"
+    $pnlActionsDlg.Height = 42
+    $pnlActionsDlg.FlowDirection = "LeftToRight"
+    $pnlRightDlg.Controls.Add($pnlActionsDlg)
+
+    $pnlFields = New-Object System.Windows.Forms.Panel
+    $pnlFields.Dock = "Top"
+    $pnlFields.Height = 72
+    $pnlRightDlg.Controls.Add($pnlFields)
+
     $lblTitleDlg = New-Object System.Windows.Forms.Label
     $lblTitleDlg.Text = "Titel"
-    $lblTitleDlg.Dock = "Top"
-    $pnlRightDlg.Controls.Add($lblTitleDlg)
+    $lblTitleDlg.AutoSize = $true
+    $lblTitleDlg.Location = New-Object System.Drawing.Point(0, 4)
+    $pnlFields.Controls.Add($lblTitleDlg)
 
     $txtSnippetTitle = New-Object System.Windows.Forms.TextBox
-    $txtSnippetTitle.Dock = "Top"
-    $pnlRightDlg.Controls.Add($txtSnippetTitle)
+    $txtSnippetTitle.Location = New-Object System.Drawing.Point(0, 22)
+    $txtSnippetTitle.Width = 430
+    $txtSnippetTitle.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
+    $pnlFields.Controls.Add($txtSnippetTitle)
 
     $lblContentDlg = New-Object System.Windows.Forms.Label
     $lblContentDlg.Text = "Inhalt"
-    $lblContentDlg.Dock = "Top"
-    $pnlRightDlg.Controls.Add($lblContentDlg)
+    $lblContentDlg.AutoSize = $true
+    $lblContentDlg.Location = New-Object System.Drawing.Point(0, 50)
+    $pnlFields.Controls.Add($lblContentDlg)
 
     $txtSnippetContent = New-Object System.Windows.Forms.TextBox
     $txtSnippetContent.Multiline = $true
     $txtSnippetContent.ScrollBars = "Vertical"
     $txtSnippetContent.Dock = "Fill"
     $pnlRightDlg.Controls.Add($txtSnippetContent)
-
-    $pnlActionsDlg = New-Object System.Windows.Forms.FlowLayoutPanel
-    $pnlActionsDlg.Dock = "Bottom"
-    $pnlActionsDlg.Height = 42
-    $pnlActionsDlg.FlowDirection = "LeftToRight"
-    $pnlRightDlg.Controls.Add($pnlActionsDlg)
 
     $btnNewSnip = New-Object System.Windows.Forms.Button
     $btnNewSnip.Text = "Neu"
