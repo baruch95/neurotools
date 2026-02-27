@@ -353,35 +353,37 @@ function Add-PatientTab {
         param($sender, $e)
 
         $tb = [System.Windows.Forms.RichTextBox]$sender
-        $textValue = $tb.Text
 
         $findNextToken = {
-            param([int]$startPos)
-            $left = $textValue.IndexOf('[', $startPos)
-            if ($left -lt 0) { $left = $textValue.IndexOf('[', 0) }
+            param([string]$text, [int]$startPos)
+            if ([string]::IsNullOrEmpty($text)) { return $null }
+            $left = $text.IndexOf('[', [Math]::Max(0, $startPos))
+            if ($left -lt 0) { $left = $text.IndexOf('[', 0) }
             if ($left -lt 0) { return $null }
-            $right = $textValue.IndexOf(']', $left + 1)
+            $right = $text.IndexOf(']', $left + 1)
             if ($right -lt 0) { return $null }
             return @($left, $right)
         }
 
         $findPrevToken = {
-            param([int]$startPos)
-            $left = $textValue.LastIndexOf('[', [Math]::Max(0, $startPos - 1))
-            if ($left -lt 0) { $left = $textValue.LastIndexOf('[') }
+            param([string]$text, [int]$startPos)
+            if ([string]::IsNullOrEmpty($text)) { return $null }
+            $left = $text.LastIndexOf('[', [Math]::Max(0, $startPos - 1))
+            if ($left -lt 0) { $left = $text.LastIndexOf('[') }
             if ($left -lt 0) { return $null }
-            $right = $textValue.IndexOf(']', $left + 1)
+            $right = $text.IndexOf(']', $left + 1)
             if ($right -lt 0) { return $null }
             return @($left, $right)
         }
 
         if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Tab) {
             $token = $null
-            if ($textValue.Contains('[') -and $textValue.Contains(']')) {
+            $currentText = $tb.Text
+            if ($currentText.Contains('[') -and $currentText.Contains(']')) {
                 $token = if ($e.Shift) {
-                    & $findPrevToken ($tb.SelectionStart)
+                    & $findPrevToken $currentText ($tb.SelectionStart)
                 } else {
-                    & $findNextToken ($tb.SelectionStart + $tb.SelectionLength)
+                    & $findNextToken $currentText ($tb.SelectionStart + $tb.SelectionLength)
                 }
             }
 
@@ -405,7 +407,8 @@ function Add-PatientTab {
                 $tb.SelectedText = $inner
                 $newPos = $selStart + $inner.Length
                 $tb.Select($newPos, 0)
-                $token = & $findNextToken $newPos
+
+                $token = & $findNextToken $tb.Text $newPos
                 if ($token) {
                     $tb.Select($token[0], ($token[1] - $token[0] + 1))
                 }
@@ -421,7 +424,8 @@ function Add-PatientTab {
             if ($selText.StartsWith('[') -and $selText.EndsWith(']')) {
                 $tb.SelectedText = ""
                 $tb.Select($selStart, 0)
-                $token = & $findNextToken $selStart
+
+                $token = & $findNextToken $tb.Text $selStart
                 if ($token) {
                     $tb.Select($token[0], ($token[1] - $token[0] + 1))
                 }
