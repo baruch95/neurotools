@@ -1,6 +1,6 @@
-﻿<#
+<#
 .SYNOPSIS
-    KISIM Formatter v1.0
+    KISIM Formatter v1.2
 #>
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName System.Windows.Forms
@@ -14,6 +14,24 @@ try {
     $win32 = Add-Type -MemberDefinition $code -Name "Win32" -Namespace Win32 -PassThru
     $null = $win32::SetProcessDPIAware()
 } catch {}
+
+# --- Hilfsfunktion für statische Konsole ---
+function Update-Console {
+    param([string]$statusMsg, [ConsoleColor]$color = 'DarkCyan')
+    Clear-Host
+    Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
+    Write-Host "   Neuro-KISIM-Formatter V1.2" -ForegroundColor White
+    Write-Host "   Created with ♥ by Nicolò " -ForegroundColor White
+    Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
+    Write-Host " "
+    Write-Host "-----------------------------------------------------------------" -ForegroundColor White
+    Write-Host "   Du kannst dieses Fenster minimieren, aber nicht schliessen" -ForegroundColor Red
+    Write-Host "-----------------------------------------------------------------" -ForegroundColor White
+    Write-Host " "
+    if (-not [string]::IsNullOrEmpty($statusMsg)) {
+        Write-Host $statusMsg -ForegroundColor $color
+    }
+}
 
 # --- 2. Configuration & State ---
 $script:configFile = Join-Path $PSScriptRoot "formatterv2_rules.json"
@@ -58,15 +76,20 @@ if (Test-Path $script:snippetFile) {
                 }
                 if ($cats.Count -eq 0) { $cats = @('Allgemein') }
 
-                [void]$script:snippets.Add([PSCustomObject]@{ title = [string]$snip.title; content = [string]$snip.content; categories = $cats })
+                $macro = ""
+                if ($snip.PSObject.Properties.Name -contains 'macro' -and $snip.macro) {
+                    $macro = ([string]$snip.macro).Trim()
+                }
+
+                [void]$script:snippets.Add([PSCustomObject]@{ title = [string]$snip.title; content = [string]$snip.content; categories = $cats; macro = $macro })
             }
         }
     } catch {}
 }
 
 if ($script:snippets.Count -eq 0) {
-    [void]$script:snippets.Add([PSCustomObject]@{ title = "o.B."; content = "o.B."; categories = @("Allgemein") })
-    [void]$script:snippets.Add([PSCustomObject]@{ title = "Pat. berichtet"; content = "Der Patient berichtet über "; categories = @("Allgemein") })
+    [void]$script:snippets.Add([PSCustomObject]@{ title = "o.B."; content = "o.B."; categories = @("Allgemein"); macro = '$ob' })
+    [void]$script:snippets.Add([PSCustomObject]@{ title = "Pat. berichtet"; content = "Der Patient berichtet über "; categories = @("Allgemein"); macro = '' })
 }
 
 # --- 3. RTF Generation Logic ---
@@ -185,10 +208,16 @@ function Ensure-SnippetState {
         }
         if ($cats.Count -eq 0) { $cats = @('Allgemein') }
 
+        $macro = ""
+        if ($item.PSObject.Properties.Name -contains 'macro' -and $item.macro) {
+            $macro = ([string]$item.macro).Trim()
+        }
+
         $script:snippets[$i] = [PSCustomObject]@{
             title = [string]$item.title
             content = [string]$item.content
             categories = $cats
+            macro = $macro
         }
     }
 }
@@ -297,7 +326,6 @@ function Show-TextbausteineDialog {
     $splitDlg.SplitterDistance = 260
     $dlg.Controls.Add($splitDlg)
 
-    # UI Elemente für das Skript global zugänglich machen
     $script:snipList = New-Object System.Windows.Forms.ListBox
     $script:snipList.Dock = "Fill"
     $splitDlg.Panel1.Controls.Add($script:snipList)
@@ -306,7 +334,7 @@ function Show-TextbausteineDialog {
     $layout.Dock = "Fill"
     $layout.RowCount = 3
     $layout.ColumnCount = 1
-    [void]$layout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 130)))
+    [void]$layout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 180)))
     [void]$layout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
     [void]$layout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 44)))
     $splitDlg.Panel2.Controls.Add($layout)
@@ -339,10 +367,22 @@ function Show-TextbausteineDialog {
     $script:txtSnippetCategories.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
     $pnlFields.Controls.Add($script:txtSnippetCategories)
 
+    $lblMacroDlg = New-Object System.Windows.Forms.Label
+    $lblMacroDlg.Text = "Makro (optional, z.B. `$ob)"
+    $lblMacroDlg.AutoSize = $true
+    $lblMacroDlg.Location = New-Object System.Drawing.Point(0, 100)
+    $pnlFields.Controls.Add($lblMacroDlg)
+
+    $script:txtSnippetMacro = New-Object System.Windows.Forms.TextBox
+    $script:txtSnippetMacro.Location = New-Object System.Drawing.Point(0, 118)
+    $script:txtSnippetMacro.Width = 490
+    $script:txtSnippetMacro.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
+    $pnlFields.Controls.Add($script:txtSnippetMacro)
+
     $lblContentDlg = New-Object System.Windows.Forms.Label
     $lblContentDlg.Text = "Inhalt"
     $lblContentDlg.AutoSize = $true
-    $lblContentDlg.Location = New-Object System.Drawing.Point(0, 100)
+    $lblContentDlg.Location = New-Object System.Drawing.Point(0, 148)
     $pnlFields.Controls.Add($lblContentDlg)
 
     $script:txtSnippetContent = New-Object System.Windows.Forms.TextBox
@@ -359,9 +399,8 @@ function Show-TextbausteineDialog {
     $btnNewSnip = New-Object System.Windows.Forms.Button; $btnNewSnip.Text = "Neu"
     $btnSaveSnip = New-Object System.Windows.Forms.Button; $btnSaveSnip.Text = "Speichern"
     $btnDeleteSnip = New-Object System.Windows.Forms.Button; $btnDeleteSnip.Text = "Löschen"
-    $btnInsertSnip = New-Object System.Windows.Forms.Button; $btnInsertSnip.Text = "Einfügen"
     $btnCloseDlg = New-Object System.Windows.Forms.Button; $btnCloseDlg.Text = "Schließen"
-    $pnlActionsDlg.Controls.AddRange(@($btnNewSnip, $btnSaveSnip, $btnDeleteSnip, $btnInsertSnip, $btnCloseDlg))
+    $pnlActionsDlg.Controls.AddRange(@($btnNewSnip, $btnSaveSnip, $btnDeleteSnip, $btnCloseDlg))
 
     $script:refreshSnipList = {
         Ensure-SnippetState
@@ -371,8 +410,7 @@ function Show-TextbausteineDialog {
 
     $script:loadSelected = {
         Ensure-SnippetState
-        if ($script:snipList.SelectedIndex -lt 0) { return }
-        if ($script:snipList.SelectedIndex -ge $script:snippets.Count) { return }
+        if ($script:snipList.SelectedIndex -lt 0 -or $script:snipList.SelectedIndex -ge $script:snippets.Count) { return }
 
         $sel = $script:snippets[$script:snipList.SelectedIndex]
         if (-not $sel) { return }
@@ -380,6 +418,7 @@ function Show-TextbausteineDialog {
         $script:txtSnippetTitle.Text = [string]$sel.title
         $script:txtSnippetContent.Text = [string]$sel.content
         $script:txtSnippetCategories.Text = if ($sel.categories) { (@($sel.categories) -join ', ') } else { '' }
+        $script:txtSnippetMacro.Text = if ($sel.macro) { [string]$sel.macro } else { '' }
     }
 
     $script:snipList.Add_SelectedIndexChanged($script:loadSelected)
@@ -388,6 +427,7 @@ function Show-TextbausteineDialog {
         $script:txtSnippetTitle.Text = ''
         $script:txtSnippetContent.Text = ''
         $script:txtSnippetCategories.Text = ''
+        $script:txtSnippetMacro.Text = ''
         $script:snipList.ClearSelected()
         $script:txtSnippetTitle.Focus()
     })
@@ -398,6 +438,9 @@ function Show-TextbausteineDialog {
         $title = [string]$script:txtSnippetTitle.Text
         if (-not [string]::IsNullOrWhiteSpace($title)) { $title = $title.Trim() }
         $content = [string]$script:txtSnippetContent.Text
+
+        $macro = [string]$script:txtSnippetMacro.Text
+        if (-not [string]::IsNullOrWhiteSpace($macro)) { $macro = $macro.Trim() }
 
         if ([string]::IsNullOrWhiteSpace($title) -or [string]::IsNullOrWhiteSpace($content)) {
             [System.Windows.Forms.MessageBox]::Show("Titel und Inhalt sind erforderlich.", "Hinweis")
@@ -411,17 +454,23 @@ function Show-TextbausteineDialog {
         }
         if ($cats.Count -eq 0) { $cats = @('Allgemein') }
 
-        $obj = [PSCustomObject]@{ title = $title; content = $content; categories = $cats }
+        $obj = [PSCustomObject]@{ title = $title; content = $content; categories = $cats; macro = $macro }
 
+        $isNew = $false
         if ($script:snipList.SelectedIndex -ge 0 -and $script:snipList.SelectedIndex -lt $script:snippets.Count) {
             $script:snippets[$script:snipList.SelectedIndex] = $obj
         } else {
             [void]$script:snippets.Add($obj)
-            $script:snipList.SelectedIndex = $script:snippets.Count - 1
+            $isNew = $true
         }
 
         Save-Snippets
         & $script:refreshSnipList
+
+        if ($isNew) {
+            $script:snipList.SelectedIndex = $script:snipList.Items.Count - 1
+        }
+
         Update-SnippetFilterOptions
         Refresh-SnippetSidebar
         [System.Windows.Forms.MessageBox]::Show("Textbaustein gespeichert.", "Saved")
@@ -443,14 +492,7 @@ function Show-TextbausteineDialog {
         $script:txtSnippetTitle.Text = ''
         $script:txtSnippetContent.Text = ''
         $script:txtSnippetCategories.Text = ''
-    })
-
-    $btnInsertSnip.Add_Click({
-        Ensure-SnippetState
-        if ($script:snipList.SelectedIndex -lt 0 -or $script:snipList.SelectedIndex -ge $script:snippets.Count) { return }
-        $sel = $script:snippets[$script:snipList.SelectedIndex]
-        Insert-TextIntoActiveEditor -text ([string]$sel.content)
-        Save-TempSession
+        $script:txtSnippetMacro.Text = ''
     })
 
     $btnCloseDlg.Add_Click({ $script:textbausteinForm.Close() })
@@ -625,6 +667,41 @@ function Add-PatientTab {
         param($sender, $e)
 
         $tb = [System.Windows.Forms.RichTextBox]$sender
+
+        # === Makro-Prüfung bei ENTER ===
+        if ($e.KeyCode -eq [System.Windows.Forms.Keys]::Enter -and $tb.SelectionLength -eq 0) {
+            $pos = $tb.SelectionStart
+            $text = $tb.Text
+            if ($pos -gt 0) {
+                # Finde den Anfang des aktuellen Wortes links vom Cursor
+                $wordStart = $pos - 1
+                while ($wordStart -ge 0 -and -not [char]::IsWhiteSpace($text[$wordStart])) {
+                    $wordStart--
+                }
+                $wordStart++ # Startindex des Wortes
+                $wordLen = $pos - $wordStart
+
+                if ($wordLen -gt 0) {
+                    $lastWord = $text.Substring($wordStart, $wordLen)
+                    
+                    if ($lastWord.Contains("$")) {
+                        Ensure-SnippetState
+                        $match = $script:snippets | Where-Object { 
+                            -not [string]::IsNullOrEmpty($_.macro) -and 
+                            $_.macro.Equals($lastWord, [System.StringComparison]::InvariantCultureIgnoreCase) 
+                        } | Select-Object -First 1
+
+                        if ($match) {
+                            $tb.Select($wordStart, $wordLen)
+                            $tb.SelectedText = $match.content
+                            $e.SuppressKeyPress = $true
+                            $e.Handled = $true
+                            return
+                        }
+                    }
+                }
+            }
+        }
 
         $findNextToken = {
             param([string]$text, [int]$startPos)
@@ -962,7 +1039,7 @@ $form.Add_FormClosing({
     param($sender, $e)
     if ($script:autoSaveTimer) { $script:autoSaveTimer.Stop() }
     $result = [System.Windows.Forms.MessageBox]::Show(
-        "Möchten Sie die geöffneten Patientendaten als temporäre Datei speichern?`n`nJa = Speichern und beenden`nNein = Ohne Speichern beenden (Temp-Datei löschen)`nAbbrechen = Zurück zur App",
+        "Möchten Sie die geöffneten Patientendaten als temporäre Datei speichern?`n`nJa = Speichern und beenden`nNein = Ohne Speichern beenden (Temp-Datei löschen)`nAbbrechen = Zurück zur App", 
         "Programm beenden",
         [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
         [System.Windows.Forms.MessageBoxIcon]::Warning
@@ -985,13 +1062,15 @@ $form.Add_FormClosing({
 })
 
 $script:autoSaveTimer = New-Object System.Windows.Forms.Timer
-$script:autoSaveTimer.Interval = 10000
+$script:autoSaveTimer.Interval = 30000 # 30 Sekunden Intervall
 $script:autoSaveTimer.Add_Tick({
     try {
         Save-TempSession
-        Write-Host ("[Autosave] " + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')) -ForegroundColor DarkCyan
+        $msg = "[Autosave] Erfolgreich gespeichert um: " + (Get-Date -Format 'HH:mm:ss')
+        Update-Console -statusMsg $msg -color 'DarkGreen'
     } catch {
-        Write-Host ("[Autosave-Error] " + $_.Exception.Message) -ForegroundColor Red
+        $msg = "[Autosave-Error] " + $_.Exception.Message
+        Update-Console -statusMsg $msg -color 'Red'
     }
 })
 
@@ -1005,13 +1084,8 @@ $form.Add_Shown({
     if ($editor) { $editor.Focus() }
 })
 $form.Add_Load({ $split.SplitterDistance = 320 })
-Clear-Host
-Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
-Write-Host "   Neuro-KISIM-Formatter V1.2" -ForegroundColor White
-Write-Host "   Created with ♥ by Nicolò " -ForegroundColor White
-Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
-Write-Host " "
-Write-Host "-----------------------------------------------------------------" -ForegroundColor White
-Write-Host "   Du kannst dieses Fenster minimieren, aber nicht schliessen" -ForegroundColor Red
-Write-Host "-----------------------------------------------------------------" -ForegroundColor White
+
+# Einmaliges Init der Konsole beim Start
+Update-Console -statusMsg "Applikation gestartet und bereit..." -color 'Gray'
+
 [void] $form.ShowDialog()
