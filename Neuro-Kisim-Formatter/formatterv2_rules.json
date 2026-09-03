@@ -207,6 +207,90 @@
                   {
                       "style":  "underline",
                       "keyword":  "Neurologische Ohruntersuchung und vestibulookuläre und -cochleäre Untersuchung: "
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "MDS-UPDRS Teil III:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Stehen und Gehen:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "UPDRS nach MDS III ??.??.???? (*):"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Zwischenanamnese$"
+                  },
+                  {
+                      "style":  "highlight",
+                      "keyword":  "$Informationen Sekretariat$"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Injektionen$"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Total*Verdünnung$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "$Zur Vorgeschichte:$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "$Aktuell:$"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Muskeleigenreflexe:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "MR??WS*/????:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "$Zwischenanamnese seit ??/????$"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "Wirkungsfluktuationen:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "Medikamentöse Nebenwirkungen:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "UPDRS nach MDS III ??.??.????:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Medikamentös:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Rehabilitativ:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "neurologie@h-och.ch"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "MRI Neurokranium vom ??.??.????:"
+                  },
+                  {
+                      "style":  "underline",
+                      "keyword":  "Liquor vom ??.??.????:"
+                  },
+                  {
+                      "style":  "bold",
+                      "keyword":  "Neuropsychologische Untersuchung vom ??.??.????:"
                   }
               ],
     "font":  "Arial"
