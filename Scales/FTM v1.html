@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fahn-Tolosa-Marín Clinical Rating Scale for Tremor</title>
+    <!-- JsBarcode library for barcode generation -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        #app-container {
+            width: 100%;
+            max-width: 800px;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 0.95em;
+        }
+        #question-container {
+            margin-top: 20px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .question-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .option {
+            margin: 8px auto;
+            display: block;
+            cursor: pointer;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            width: 90%;
+            max-width: 650px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .option:hover, .option:focus-within {
+            background-color: #f8f9fa;
+            border-color: #3498db;
+            outline: none;
+        }
+        .option input {
+            margin-right: 12px;
+        }
+        .option label {
+            cursor: pointer;
+            display: inline-block;
+            width: 90%;
+        }
+        .option-score {
+            font-weight: bold;
+            display: inline-block;
+            width: 30px;
+            color: #3498db;
+        }
+        #navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        #progress-bar-container {
+            width: 100%;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 10px;
+            background-color: #2ecc71;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        #progress-text {
+            text-align: center;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        #results-container {
+            display: none;
+        }
+        .results-actions {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .score-highlight-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 50px;
+            margin: 20px 0;
+        }
+        .score-main-val {
+            font-size: 2.8em;
+            font-weight: bold;
+            color: #27ae60;
+            margin: 0;
+            line-height: 1.1;
+        }
+        .score-label {
+            text-align: center;
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+
+        .subscores {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .subscore-card {
+            background: #f8f9fa;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 15px;
+            flex: 1;
+            min-width: 160px;
+            text-align: center;
+        }
+        .subscore-card h4 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+        .subscore-card p {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin: 5px 0 10px;
+        }
+        .subscore-val {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        #detailed-results table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        #detailed-results th, #detailed-results td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+        #detailed-results th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        #detailed-results .score-cell {
+            text-align: center;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .part-header td {
+            background-color: #e8f4f8;
+            font-weight: bold;
+            color: #2980b9;
+            text-align: center !important;
+            padding: 12px;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 180px; }
+        .input-group label { font-weight: bold; font-size: 0.9em; color: #2c3e50; }
+        .input-group input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+
+        /* --- STYLES FOR PRINTING --- */
+        @media print {
+            body {
+                background-color: #fff;
+                font-size: 11pt;
+            }
+            #app-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-width: 100%;
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                margin: 0;
+            }
+            .no-print, button, #navigation, #progress-container, #question-container {
+                display: none !important;
+            }
+            #results-container {
+                display: block !important;
+            }
+            #patient-summary {
+                display: flex !important;
+                border: none !important;
+                border-bottom: 2px solid #2c3e50 !important;
+                padding: 0 0 15px 0 !important;
+                margin-bottom: 20px !important;
+                border-radius: 0 !important;
+            }
+            table { page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            #detailed-results th, #detailed-results td { border: 1px solid #ddd; padding: 6px; }
+            .subscore-card { border: 1px solid #aaa; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <h1>Fahn-Tolosa-Marín Tremor Rating Scale</h1>
+        <p class="subtitle">Clinical Rating Scale for Tremor (CRST)</p>
+        
+        <div id="progress-container">
+            <div id="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+            <div id="progress-text">Page 1</div>
+        </div>
+
+        <div id="question-container">
+            <!-- Questions will be dynamically inserted here -->
+        </div>
+
+        <div id="navigation">
+            <button id="prev-btn" onclick="prevPage()" disabled>Back</button>
+            <button id="next-btn" onclick="nextPage()">Next</button>
+        </div>
+
+        <div id="results-container">
+            <h2 class="no-print">Evaluation Complete</h2>
+            
+            <!-- Patient Data Form (Hidden on Print) -->
+            <div id="patient-data-form" class="no-print" style="margin-bottom: 25px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background: #fafafa;">
+                <h3 style="margin-top: 0; text-align: left;">Patienten Daten</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                    <div class="input-group">
+                        <label>Name</label>
+                        <input type="text" id="pat-name" placeholder="Nachname" oninput="updatePrintView()">
+                    </div>
+                    <div class="input-group">
+                        <label>Vorname</label>
+                        <input type="text" id="pat-vorname" placeholder="Vorname" oninput="updatePrintView()">
+                    </div>
+                    <div class="input-group">
+                        <label>Geburtsdatum</label>
+                        <input type="date" id="pat-dob" oninput="updatePrintView()">
+                    </div>
+                    <div class="input-group">
+                        <label>Fallnummer</label>
+                        <input type="text" id="pat-fallnummer" placeholder="Fallnummer" oninput="updatePrintView()">
+                    </div>
+                    <div class="input-group">
+                        <label>Examiner Initials</label>
+                        <input type="text" id="pat-examiner" placeholder="Initials (e.g. Dr. S)" oninput="updatePrintView()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Print Summary Header (Visible only when generating PDF/Print) -->
+            <div id="patient-summary" style="display: none; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; background: #fff;">
+                <div class="patient-info-print" style="font-size: 1.1em; line-height: 1.8;">
+                    <h2 style="text-align: left; margin: 0 0 10px 0;">Fahn-Tolosa-Marín CRST Results</h2>
+                    <p style="margin: 0;"><strong>Name:</strong> <span id="print-name"></span></p>
+                    <p style="margin: 0;"><strong>Vorname:</strong> <span id="print-vorname"></span></p>
+                    <p style="margin: 0;"><strong>Geburtsdatum:</strong> <span id="print-dob"></span></p>
+                    <p style="margin: 0;"><strong>Examiner Initials:</strong> <span id="print-examiner"></span></p>
+                </div>
+                <div class="barcode-wrapper" style="text-align: right;">
+                    <svg id="barcode"></svg>
+                </div>
+            </div>
+
+            <div id="total-score-display">
+                <div class="score-highlight-container">
+                    <div>
+                        <div class="score-main-val" id="total-score">0 <span style="font-size:0.5em; color:#7f8c8d;">/ 144</span></div>
+                        <div class="score-label">Total Score</div>
+                    </div>
+                    <div>
+                        <div class="score-main-val" id="severity-score" style="color: #e67e22;">0.0%</div>
+                        <div class="score-label">% SEVERITY</div>
+                    </div>
+                </div>
+                
+                <div class="subscores">
+                    <div class="subscore-card">
+                        <h4>Part A</h4>
+                        <p>Tremor Location</p>
+                        <div class="subscore-val"><span id="score-partA">0</span> / 80</div>
+                    </div>
+                    <div class="subscore-card">
+                        <h4>Part B</h4>
+                        <p>Specific Motor Tasks</p>
+                        <div class="subscore-val"><span id="score-partB">0</span> / 36</div>
+                    </div>
+                    <div class="subscore-card">
+                        <h4>Part C</h4>
+                        <p>Functional Disabilities</p>
+                        <div class="subscore-val"><span id="score-partC">0</span> / 28</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="detailed-results"></div>
+            
+            <div class="results-actions no-print">
+                <button onclick="restart()">Restart</button>
+                <button onclick="printResults()">Print / PDF</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+const amplitudeOptions =[
+    {"score": 0, "text": "None"},
+    {"score": 1, "text": "Slight (amplitude < 0.5 cm). May be intermittent."},
+    {"score": 2, "text": "Moderate amplitude (0.5-1 cm). May be intermittent."},
+    {"score": 3, "text": "Marked amplitude (1-2 cm)"},
+    {"score": 4, "text": "Severe amplitude (> 2 cm)"}
+];
+
+const originalQuestionsData =[
+    // PART A (Max: 80 points)
+    { "id": "A1", "part": "A", "title": "1. Face", "parts": ["At Rest"], "options": amplitudeOptions },
+    { "id": "A2", "part": "A", "title": "2. Tongue", "parts":["At Rest", "With Posture"], "options": amplitudeOptions },
+    { "id": "A3", "part": "A", "title": "3. Voice", "parts": ["During Speech (ACT/INT)"], "options": amplitudeOptions },
+    { "id": "A4", "part": "A", "title": "4. Head", "parts":["At Rest", "With Posture"], "options": amplitudeOptions },
+    { "id": "A5", "part": "A", "title": "5. Right Upper Limb", "parts":["At Rest", "With Posture", "With Action"], "options": amplitudeOptions },
+    { "id": "A6", "part": "A", "title": "6. Left Upper Limb", "parts":["At Rest", "With Posture", "With Action"], "options": amplitudeOptions },
+    { "id": "A7", "part": "A", "title": "7. Trunk", "parts":["At Rest", "With Posture"], "options": amplitudeOptions },
+    { "id": "A8", "part": "A", "title": "8. Right Lower Limb", "parts":["At Rest", "With Posture", "With Action"], "options": amplitudeOptions },
+    { "id": "A9", "part": "A", "title": "9. Left Lower Limb", "parts":["At Rest", "With Posture", "With Action"], "options": amplitudeOptions },
+    
+    // PART B (Max: 36 points)
+    {
+        "id": "B10", "part": "B", "title": "10. Handwriting", "parts": ["Dominant Hand"],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Mildly abnormal. Slightly untidy, tremulous."},
+            {"score": 2, "text": "Moderately abnormal. Legible, but with considerable tremor."},
+            {"score": 3, "text": "Markedly abnormal. Illegible."},
+            {"score": 4, "text": "Severely abnormal. Unable to keep pencil or pen on paper without holding hand down with the other hand."}
+        ]
+    },
+    {
+        "id": "B11", "part": "B", "title": "11. Drawing A", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Slightly tremulous. May cross lines occasionally."},
+            {"score": 2, "text": "Moderately tremulous or crosses lines frequently."},
+            {"score": 3, "text": "Accomplishes the task with great difficulty. Many errors."},
+            {"score": 4, "text": "Unable to complete drawing."}
+        ]
+    },
+    {
+        "id": "B12", "part": "B", "title": "12. Drawing B", "parts": ["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Slightly tremulous. May cross lines occasionally."},
+            {"score": 2, "text": "Moderately tremulous or crosses lines frequently."},
+            {"score": 3, "text": "Accomplishes the task with great difficulty. Many errors."},
+            {"score": 4, "text": "Unable to complete drawing."}
+        ]
+    },
+    {
+        "id": "B13", "part": "B", "title": "13. Drawing C", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Slightly tremulous. May cross lines occasionally."},
+            {"score": 2, "text": "Moderately tremulous or crosses lines frequently."},
+            {"score": 3, "text": "Accomplishes the task with great difficulty. Many errors."},
+            {"score": 4, "text": "Unable to complete drawing."}
+        ]
+    },
+    {
+        "id": "B14", "part": "B", "title": "14. Pouring", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "More careful than a person without tremor, but no water is spilled."},
+            {"score": 2, "text": "Spills a small amount of water (up to 10% of total amount)."},
+            {"score": 3, "text": "Spills a considerable amount of water (>10-50%)."},
+            {"score": 4, "text": "Unable to pour without spilling most of the water."}
+        ]
+    },
+
+    // PART C (Max: 28 points)
+    {
+        "id": "C15", "part": "C", "title": "15. Speaking", "parts": [""],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Mild voice tremulousness when \"nervous\" only."},
+            {"score": 2, "text": "Mild voice tremor, constant."},
+            {"score": 3, "text": "Moderate voice tremor."},
+            {"score": 4, "text": "Severe voice tremor. Some words difficult to understand."}
+        ]
+    },
+    {
+        "id": "C16", "part": "C", "title": "16. Feeding (other than liquids)", "parts": [""],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Mildly abnormal. Can bring all solids to mouth, spilling only rarely."},
+            {"score": 2, "text": "Moderately abnormal. Frequent spills of peas and similar foods. May bring head at least halfway to meet food."},
+            {"score": 3, "text": "Markedly abnormal. Unable to cut or uses 2 hands to feed."},
+            {"score": 4, "text": "Severely abnormal. Needs help to feed."}
+        ]
+    },
+    {
+        "id": "C17", "part": "C", "title": "17. Bringing Liquids to Mouth", "parts": [""],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Mildly abnormal. Can still use a spoon, but not if it is completely full."},
+            {"score": 2, "text": "Moderately abnormal. Unable to use a spoon. Uses cup or glass."},
+            {"score": 3, "text": "Markedly abnormal. Can drink from cup or glass, but needs 2 hands."},
+            {"score": 4, "text": "Severely abnormal. Must use a straw."}
+        ]
+    },
+    {
+        "id": "C18", "part": "C", "title": "18. Hygiene", "parts": [""],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Mildly abnormal. Able to do everything, but is more careful than the average person."},
+            {"score": 2, "text": "Moderately abnormal. Able to do everything, but with errors; uses electric razor because of tremor."},
+            {"score": 3, "text": "Markedly abnormal. Unable to do most fine tasks, such as putting on lipstick or shaving (even with electric razor), unless using two hands."},
+            {"score": 4, "text": "Severely abnormal. Unable to do any fine-movement tasks."}
+        ]
+    },
+    {
+        "id": "C19", "part": "C", "title": "19. Dressing", "parts": [""],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Mildly abnormal. Able to do everything, but is more careful than the average person."},
+            {"score": 2, "text": "Moderately abnormal. Able to do everything, but with errors."},
+            {"score": 3, "text": "Markedly abnormal. Needs some assistance with buttoning or other activities, such as tying shoelaces."},
+            {"score": 4, "text": "Severely abnormal. Requires assistance even for gross motor activities."}
+        ]
+    },
+    {
+        "id": "C20", "part": "C", "title": "20. Writing", "parts":[""],
+        "options":[
+            {"score": 0, "text": "Normal"},
+            {"score": 1, "text": "Mildly abnormal. Legible. Continues to write letters."},
+            {"score": 2, "text": "Moderately abnormal. Legible, but no longer writes letters."},
+            {"score": 3, "text": "Markedly abnormal. Illegible."},
+            {"score": 4, "text": "Severely abnormal. Unable to sign checks or other documents requiring signature."}
+        ]
+    },
+    {
+        "id": "C21", "part": "C", "title": "21. Working", "parts": [""],
+        "options":[
+            {"score": 0, "text": "Tremor does not interfere with the job."},
+            {"score": 1, "text": "Able to work, but needs to be more careful than the average person."},
+            {"score": 2, "text": "Able to do everything, but with errors. Poorer than usual performance because of tremor."},
+            {"score": 3, "text": "Unable to do regular job. May have changed to a different job because of tremor. Tremor limits housework, such as ironing."},
+            {"score": 4, "text": "Unable to do any outside job; housework very limited."}
+        ]
+    }
+];
+
+const flattenedQuestions =[];
+originalQuestionsData.forEach(q => {
+    q.parts.forEach(part => {
+        flattenedQuestions.push({
+            id: `${q.id}${part ? '_' + part.replace(/[^a-zA-Z0-9]/g, '_') : ''}`,
+            title: part ? `${q.title} - ${part}` : q.title,
+            partGroup: q.part,
+            options: q.options
+        });
+    });
+});
+
+let currentPageIndex = 0;
+const questionsPerPage = 1; 
+const totalPages = Math.ceil(flattenedQuestions.length / questionsPerPage);
+const userAnswers = {};
+
+const questionContainer = document.getElementById('question-container');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const progressBar = document.getElementById('progress-bar');
+const progressText = document.getElementById('progress-text');
+const resultsContainer = document.getElementById('results-container');
+const navigation = document.getElementById('navigation');
+const progressContainer = document.getElementById('progress-container');
+const detailedResultsEl = document.getElementById('detailed-results');
+
+function init() {
+    renderPage();
+}
+
+function renderPage() {
+    questionContainer.innerHTML = '';
+    window.scrollTo(0, 0);
+
+    const startIndex = currentPageIndex * questionsPerPage;
+    const question = flattenedQuestions[startIndex];
+    renderSingleQuestion(question, startIndex);
+    
+    updateNavigation();
+    updateProgressBar();
+}
+
+function renderSingleQuestion(question, questionIndex) {
+    const questionWrapper = document.createElement('div');
+    questionWrapper.className = 'question-wrapper';
+
+    const questionTitle = document.createElement('div');
+    questionTitle.className = 'question-title';
+    
+    // Add Part Subtitle Context visually
+    let partText = '';
+    if(question.partGroup === 'A') partText = 'Part A: Tremor Location<br>';
+    if(question.partGroup === 'B') partText = 'Part B: Motor Tasks<br>';
+    if(question.partGroup === 'C') partText = 'Part C: Functional Disabilities<br>';
+    
+    questionTitle.innerHTML = `<span style="font-size:0.75em; color:#7f8c8d; font-weight:normal;">${partText}</span>${question.title}`;
+    questionWrapper.appendChild(questionTitle);
+
+    question.options.forEach((option) => {
+        const optionId = `q${questionIndex}_s${option.score}`;
+        const optionName = `q${questionIndex}`;
+        
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'option';
+        
+        const radioInput = document.createElement('input');
+        radioInput.type = 'radio';
+        radioInput.id = optionId;
+        radioInput.name = optionName;
+        radioInput.value = option.score;
+        radioInput.onchange = () => {
+            saveAnswer(question.id, option.score);
+            checkCompletionAndAdvance();
+        };
+
+        if (userAnswers[question.id] !== undefined && userAnswers[question.id] === option.score) {
+            radioInput.checked = true;
+        }
+
+        const label = document.createElement('label');
+        label.htmlFor = optionId;
+        label.innerHTML = `<span class="option-score">${option.score}</span> ${option.text}`;
+        
+        optionDiv.appendChild(radioInput);
+        optionDiv.appendChild(label);
+        questionWrapper.appendChild(optionDiv);
+    });
+
+    questionContainer.appendChild(questionWrapper);
+}
+
+function saveAnswer(questionId, score) {
+    userAnswers[questionId] = parseInt(score);
+}
+
+function checkCompletionAndAdvance() {
+    const question = flattenedQuestions[currentPageIndex];
+    if (userAnswers[question.id] !== undefined) {
+        setTimeout(() => {
+            if (question.id === flattenedQuestions[currentPageIndex].id) {
+                nextPage();
+            }
+        }, 300);
+    }
+}
+
+function updateNavigation() {
+    prevBtn.disabled = currentPageIndex === 0;
+    if (currentPageIndex === totalPages - 1) {
+        nextBtn.textContent = 'Evaluate';
+    } else {
+        nextBtn.textContent = 'Next';
+    }
+}
+
+function updateProgressBar() {
+    const progress = ((currentPageIndex + 1) / totalPages) * 100;
+    progressBar.style.width = `${progress}%`;
+    progressText.textContent = `Question ${currentPageIndex + 1} of ${totalPages}`;
+}
+
+function nextPage() {
+    if (currentPageIndex < totalPages - 1) {
+        currentPageIndex++;
+        renderPage();
+    } else {
+        showResults();
+    }
+}
+
+function prevPage() {
+    if (currentPageIndex > 0) {
+        currentPageIndex--;
+        renderPage();
+    }
+}
+
+function updatePrintView() {
+    const name = document.getElementById('pat-name').value;
+    const vorname = document.getElementById('pat-vorname').value;
+    const dob = document.getElementById('pat-dob').value;
+    const fallnummer = document.getElementById('pat-fallnummer').value;
+    const examiner = document.getElementById('pat-examiner').value;
+
+    if (name || vorname || dob || fallnummer || examiner) {
+        document.getElementById('patient-summary').style.display = 'flex';
+    } else {
+        document.getElementById('patient-summary').style.display = 'none';
+    }
+
+    document.getElementById('print-name').textContent = name;
+    document.getElementById('print-vorname').textContent = vorname;
+    document.getElementById('print-examiner').textContent = examiner;
+    
+    if (dob) {
+        const parts = dob.split('-');
+        document.getElementById('print-dob').textContent = `${parts[2]}.${parts[1]}.${parts[0]}`;
+    } else {
+        document.getElementById('print-dob').textContent = '';
+    }
+    
+    // Generate barcode if fallnummer is provided
+    if (fallnummer && typeof JsBarcode !== 'undefined') {
+        document.getElementById('barcode').style.display = 'block';
+        JsBarcode("#barcode", fallnummer, {
+            format: "CODE128",
+            width: 1.5,
+            height: 40,
+            displayValue: true,
+            fontSize: 14,
+            margin: 0
+        });
+    } else {
+        document.getElementById('barcode').style.display = 'none';
+    }
+}
+
+function showResults() {
+    let scoreA = 0, scoreB = 0, scoreC = 0;
+    
+    let detailedHtml = '<table><thead><tr><th>Question Component</th><th>Score</th></tr></thead><tbody>';
+
+    detailedHtml += `<tr class="part-header"><td colspan="2">Part A: Tremor Location (Max: 80)</td></tr>`;
+    flattenedQuestions.filter(q => q.partGroup === 'A').forEach(q => {
+        const score = userAnswers[q.id] !== undefined ? userAnswers[q.id] : 0;
+        scoreA += score;
+        detailedHtml += `<tr><td>${q.title}</td><td class="score-cell">${score}</td></tr>`;
+    });
+
+    detailedHtml += `<tr class="part-header"><td colspan="2">Part B: Specific Motor Tasks (Max: 36)</td></tr>`;
+    flattenedQuestions.filter(q => q.partGroup === 'B').forEach(q => {
+        const score = userAnswers[q.id] !== undefined ? userAnswers[q.id] : 0;
+        scoreB += score;
+        detailedHtml += `<tr><td>${q.title}</td><td class="score-cell">${score}</td></tr>`;
+    });
+
+    detailedHtml += `<tr class="part-header"><td colspan="2">Part C: Functional Disabilities (Max: 28)</td></tr>`;
+    flattenedQuestions.filter(q => q.partGroup === 'C').forEach(q => {
+        const score = userAnswers[q.id] !== undefined ? userAnswers[q.id] : 0;
+        scoreC += score;
+        detailedHtml += `<tr><td>${q.title}</td><td class="score-cell">${score}</td></tr>`;
+    });
+
+    detailedHtml += '</tbody></table>';
+
+    const totalScore = scoreA + scoreB + scoreC;
+    const severityPercentage = ((totalScore / 144) * 100).toFixed(1);
+
+    // View Switching
+    questionContainer.style.display = 'none';
+    navigation.style.display = 'none';
+    progressContainer.style.display = 'none';
+    
+    resultsContainer.style.display = 'block';
+    
+    // Fill Scores
+    document.getElementById('score-partA').textContent = scoreA;
+    document.getElementById('score-partB').textContent = scoreB;
+    document.getElementById('score-partC').textContent = scoreC;
+    document.getElementById('total-score').innerHTML = `${totalScore} <span style="font-size:0.5em; color:#7f8c8d;">/ 144</span>`;
+    document.getElementById('severity-score').textContent = `${severityPercentage}%`;
+    
+    detailedResultsEl.innerHTML = detailedHtml;
+    window.scrollTo(0, 0);
+}
+
+function restart() {
+    currentPageIndex = 0;
+    for(const key in userAnswers) {
+        delete userAnswers[key];
+    }
+    
+    // Reset Data
+    document.getElementById('pat-name').value = '';
+    document.getElementById('pat-vorname').value = '';
+    document.getElementById('pat-dob').value = '';
+    document.getElementById('pat-fallnummer').value = '';
+    document.getElementById('pat-examiner').value = '';
+    updatePrintView();
+    
+    questionContainer.style.display = 'block';
+    navigation.style.display = 'flex';
+    progressContainer.style.display = 'block';
+    resultsContainer.style.display = 'none';
+    detailedResultsEl.innerHTML = '';
+
+    renderPage();
+}
+
+function handleKeyPress(event) {
+    if (resultsContainer.style.display === 'block') return;
+    
+    const questionIndex = currentPageIndex;
+    const radios = document.querySelectorAll(`input[name="q${questionIndex}"]`);
+    
+    for (let radio of radios) {
+        if (radio.value === event.key) {
+            event.preventDefault();
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+            break;
+        }
+    }
+}
+
+function printResults() {
+    window.print();
+}
+
+// Initial Setup
+document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('keydown', handleKeyPress);
+
+</script>
+
+</body>
+</html>
