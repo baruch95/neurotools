@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDS-UPDRS Part III: Motor Examination</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        #app-container {
+            width: 100%;
+            max-width: 800px;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        #question-container {
+            margin-top: 20px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .question-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .option {
+            margin: 10px auto;
+            display: block;
+            cursor: pointer;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            width: 90%;
+            max-width: 600px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .option:hover, .option:focus-within {
+            background-color: #f8f9fa;
+            border-color: #3498db;
+            outline: none;
+        }
+        .option input {
+            margin-right: 12px;
+        }
+        .option label {
+            cursor: pointer;
+            display: inline-block;
+            width: 90%;
+        }
+        .option-score {
+            font-weight: bold;
+            display: inline-block;
+            width: 20px;
+            color: #3498db;
+        }
+        #navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        #progress-bar-container {
+            width: 100%;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 10px;
+            background-color: #2ecc71;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        #progress-text {
+            text-align: center;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        #results-container {
+            text-align: center;
+            display: none;
+        }
+        .results-actions {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        #total-score-display {
+            margin-bottom: 30px;
+        }
+        #total-score {
+            font-size: 3em;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        #detailed-results {
+            text-align: left;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #detailed-results table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #detailed-results th, #detailed-results td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        #detailed-results th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        #detailed-results .score-cell {
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* --- STYLES FOR PRINTING --- */
+        @media print {
+            body {
+                background-color: #fff;
+            }
+            body * {
+                visibility: hidden;
+            }
+            #results-container, #results-container * {
+                visibility: visible;
+            }
+            #app-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                margin: 0;
+            }
+            h2 {
+                margin-top: 0;
+                padding-top: 0px; 
+            }
+            .results-actions {
+                display: none; 
+            }
+            #detailed-results {
+                max-height: none; 
+                overflow-y: visible;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <h1>MDS-UPDRS Part III: Motor Examination</h1>
+        
+        <div id="progress-container">
+            <div id="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+            <div id="progress-text">Page 1</div>
+        </div>
+
+        <div id="question-container">
+            <!-- Questions will be dynamically inserted here -->
+        </div>
+
+        <div id="navigation">
+            <button id="prev-btn" onclick="prevPage()" disabled>Back</button>
+            <button id="next-btn" onclick="nextPage()">Next</button>
+        </div>
+
+        <div id="results-container">
+            <h2>Evaluation Complete</h2>
+            <div id="total-score-display">
+                <p>Your total score for Part III is:</p>
+                <div id="total-score">0</div>
+                <p style="font-size: 0.8em; color: #7f8c8d;">Maximum Score: 132</p>
+            </div>
+            <div id="detailed-results"></div>
+            <div class="results-actions">
+                <button onclick="restart()">Restart</button>
+                <button onclick="printResults()">Print</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+const originalQuestionsData =[
+    {
+        "id": "3.1", "title": "3.1 Speech", "parts": ["Speech"],
+        "options":[
+            {"score": 0, "text": "Normal: No speech problems."},
+            {"score": 1, "text": "Slight: Loss of modulation, diction, or volume, but still all words easy to understand."},
+            {"score": 2, "text": "Mild: Loss of modulation, diction, or volume, with a few words unclear, but overall sentences easy to follow."},
+            {"score": 3, "text": "Moderate: Speech is difficult to understand to the point that some, but not most, sentences are poorly understood."},
+            {"score": 4, "text": "Severe: Most speech is difficult to understand or unintelligible."}
+        ]
+    },
+    {
+        "id": "3.2", "title": "3.2 Facial Expression", "parts":["Facial Expression"],
+        "options":[
+            {"score": 0, "text": "Normal: Normal facial expression."},
+            {"score": 1, "text": "Slight: Minimal masked facies manifested only by decreased frequency of blinking."},
+            {"score": 2, "text": "Mild: Decreased blinking and masked facies in lower face (fewer movements around mouth), lips not parted."},
+            {"score": 3, "text": "Moderate: Masked facies with lips parted some of the time when the mouth is at rest."},
+            {"score": 4, "text": "Severe: Masked facies with lips parted most of the time when the mouth is at rest."}
+        ]
+    },
+    {
+        "id": "3.3", "title": "3.3 Rigidity", "parts":["Neck", "Right Upper Extremity", "Left Upper Extremity", "Right Lower Extremity", "Left Lower Extremity"],
+        "options":[
+            {"score": 0, "text": "Normal: No rigidity."},
+            {"score": 1, "text": "Slight: Rigidity only detected with activation maneuver."},
+            {"score": 2, "text": "Mild: Rigidity detected without the activation maneuver, but full range of motion is easily achieved."},
+            {"score": 3, "text": "Moderate: Rigidity detected without the activation maneuver; full range of motion is achieved with effort."},
+            {"score": 4, "text": "Severe: Rigidity detected without the activation maneuver and full range of motion not achieved."}
+        ]
+    },
+    {
+        "id": "3.4", "title": "3.4 Finger Tapping", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.5", "title": "3.5 Hand Movements", "parts": ["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.6", "title": "3.6 Pronation-Supination Movements of Hands", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.7", "title": "3.7 Toe Tapping", "parts": ["Right Foot", "Left Foot"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.8", "title": "3.8 Leg Agility", "parts": ["Right Leg", "Left Leg"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.9", "title": "3.9 Arising from Chair", "parts": ["Arising"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems. Able to arise quickly without hesitation."},
+            {"score": 1, "text": "Slight: Slower than normal; or needs >1 attempt; or must move forward in chair. Doesn't use arms of chair."},
+            {"score": 2, "text": "Mild: Pushes self up from arms of seat without difficulty."},
+            {"score": 3, "text": "Moderate: Needs to push off, tends to fall back, may need >1 try using arms of seat, but gets up without help."},
+            {"score": 4, "text": "Severe: Unable to arise without help."}
+        ]
+    },
+    {
+        "id": "3.10", "title": "3.10 Gait", "parts": ["Gait"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Independent walking with minor gait impairment."},
+            {"score": 2, "text": "Mild: Independent walking but with substantial gait impairment."},
+            {"score": 3, "text": "Moderate: Requires an assistive device for safe walking (walking stick, walker) but not a person."},
+            {"score": 4, "text": "Severe: Cannot walk at all or only with another person's assistance."}
+        ]
+    },
+    {
+        "id": "3.11", "title": "3.11 Freezing of Gait", "parts": ["Freezing"],
+        "options":[
+            {"score": 0, "text": "Normal: No freezing."},
+            {"score": 1, "text": "Slight: Freezes on starting, turning, or walking through doorway with a single halt, continues smoothly."},
+            {"score": 2, "text": "Mild: Freezes on starting, turning, or walking through doorway with >1 halt, continues smoothly."},
+            {"score": 3, "text": "Moderate: Freezes once or twice during straight walking."},
+            {"score": 4, "text": "Severe: Freezes multiple times during straight walking."}
+        ]
+    },
+    {
+        "id": "3.12", "title": "3.12 Postural Stability", "parts": ["Stability"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems. Recovers with one or two steps."},
+            {"score": 1, "text": "Slight: 3-5 steps, but subject catches himself/herself."},
+            {"score": 2, "text": "Mild: More than 5 steps, but subject catches himself/herself."},
+            {"score": 3, "text": "Moderate: Stands safely, but with absence of postural response; falls if not caught by examiner."},
+            {"score": 4, "text": "Severe: Very unstable, tends to lose balance spontaneously or with just a gentle pull on the shoulders."}
+        ]
+    },
+    {
+        "id": "3.13", "title": "3.13 Posture", "parts":["Posture"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Not quite erect, but posture could be normal for older person."},
+            {"score": 2, "text": "Mild: Definite flexion, scoliosis or leaning to one side, but can correct posture to normal when asked."},
+            {"score": 3, "text": "Moderate: Stooped posture, scoliosis or leaning to one side that cannot be corrected volitionally."},
+            {"score": 4, "text": "Severe: Flexion, scoliosis or leaning with extreme abnormality of posture."}
+        ]
+    },
+    {
+        "id": "3.14", "title": "3.14 Global Spontaneity of Movement", "parts": ["Body Bradykinesia"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Slight global slowness and poverty of spontaneous movements."},
+            {"score": 2, "text": "Mild: Mild global slowness and poverty of spontaneous movements."},
+            {"score": 3, "text": "Moderate: Moderate global slowness and poverty of spontaneous movements."},
+            {"score": 4, "text": "Severe: Severe global slowness and poverty of spontaneous movements."}
+        ]
+    },
+    {
+        "id": "3.15", "title": "3.15 Postural Tremor of the Hands", "parts": ["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No tremor."},
+            {"score": 1, "text": "Slight: Tremor is present but less than 1 cm in amplitude."},
+            {"score": 2, "text": "Mild: Tremor is at least 1 but less than 3 cm in amplitude."},
+            {"score": 3, "text": "Moderate: Tremor is at least 3 but less than 10 cm in amplitude."},
+            {"score": 4, "text": "Severe: Tremor is at least 10 cm in amplitude."}
+        ]
+    },
+    {
+        "id": "3.16", "title": "3.16 Kinetic Tremor of the Hands", "parts": ["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No tremor."},
+            {"score": 1, "text": "Slight: Tremor is present but less than 1 cm in amplitude."},
+            {"score": 2, "text": "Mild: Tremor is at least 1 but less than 3 cm in amplitude."},
+            {"score": 3, "text": "Moderate: Tremor is at least 3 but less than 10 cm in amplitude."},
+            {"score": 4, "text": "Severe: Tremor is at least 10 cm in amplitude."}
+        ]
+    },
+    {
+        "id": "3.17", "title": "3.17 Rest Tremor Amplitude", "parts":["Right Upper Extremity", "Left Upper Extremity", "Right Lower Extremity", "Left Lower Extremity", "Lip/Jaw"],
+        "options":[
+            {"score": 0, "text": "Normal: No tremor."},
+            {"score": 1, "text": "Slight: < 1 cm in maximal amplitude."},
+            {"score": 2, "text": "Mild: > 1 cm but < 3 cm in maximal amplitude."},
+            {"score": 3, "text": "Moderate: 3 - 10 cm in maximal amplitude."},
+            {"score": 4, "text": "Severe: > 10 cm in maximal amplitude."}
+        ]
+    },
+    {
+        "id": "3.18", "title": "3.18 Constancy of Rest Tremor", "parts": ["Constancy"],
+        "options":[
+            {"score": 0, "text": "Normal: No tremor."},
+            {"score": 1, "text": "Slight: Tremor present < 25% of the entire examination period."},
+            {"score": 2, "text": "Mild: Tremor present 26-50% of the entire examination period."},
+            {"score": 3, "text": "Moderate: Tremor present 51-75% of the entire examination period."},
+            {"score": 4, "text": "Severe: Tremor present > 75% of the entire examination period."}
+        ]
+    }
+];
+
+const flattenedQuestions =[];
+originalQuestionsData.forEach(q => {
+    q.parts.forEach(part => {
+        flattenedQuestions.push({
+            id: `${q.id}_${part.replace(/\s/g, '_')}`,
+            title: q.parts.length > 1 ? `${q.title} - ${part}` : q.title,
+            options: q.options
+        });
+    });
+});
+
+let currentPageIndex = 0;
+const questionsPerPage = 1; 
+const totalPages = Math.ceil(flattenedQuestions.length / questionsPerPage);
+const userAnswers = {};
+
+const questionContainer = document.getElementById('question-container');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const progressBar = document.getElementById('progress-bar');
+const progressText = document.getElementById('progress-text');
+const resultsContainer = document.getElementById('results-container');
+const navigation = document.getElementById('navigation');
+const progressContainer = document.getElementById('progress-container');
+const totalScoreEl = document.getElementById('total-score');
+const detailedResultsEl = document.getElementById('detailed-results');
+
+function renderPage() {
+    questionContainer.innerHTML = '';
+    window.scrollTo(0, 0);
+
+    const startIndex = currentPageIndex * questionsPerPage;
+    const question = flattenedQuestions[startIndex];
+    renderSingleQuestion(question, startIndex);
+    
+    updateNavigation();
+    updateProgressBar();
+}
+
+function renderSingleQuestion(question, questionIndex) {
+    const questionWrapper = document.createElement('div');
+    questionWrapper.className = 'question-wrapper';
+
+    const questionTitle = document.createElement('div');
+    questionTitle.className = 'question-title';
+    questionTitle.textContent = question.title;
+    questionWrapper.appendChild(questionTitle);
+
+    question.options.forEach((option) => {
+        const optionId = `q${questionIndex}_s${option.score}`;
+        const optionName = `q${questionIndex}`;
+        
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'option';
+        
+        const radioInput = document.createElement('input');
+        radioInput.type = 'radio';
+        radioInput.id = optionId;
+        radioInput.name = optionName;
+        radioInput.value = option.score;
+        radioInput.onchange = () => {
+            saveAnswer(question.id, option.score);
+            checkCompletionAndAdvance();
+        };
+
+        if (userAnswers[question.id] !== undefined && userAnswers[question.id] === option.score) {
+            radioInput.checked = true;
+        }
+
+        const label = document.createElement('label');
+        label.htmlFor = optionId;
+        label.innerHTML = `<span class="option-score">${option.score}:</span> ${option.text}`;
+        
+        optionDiv.appendChild(radioInput);
+        optionDiv.appendChild(label);
+        questionWrapper.appendChild(optionDiv);
+    });
+
+    questionContainer.appendChild(questionWrapper);
+}
+
+function saveAnswer(questionId, score) {
+    userAnswers[questionId] = parseInt(score);
+}
+
+function checkCompletionAndAdvance() {
+    const question = flattenedQuestions[currentPageIndex];
+    if (userAnswers[question.id] !== undefined) {
+        setTimeout(() => {
+            // Re-check to ensure user is still on the same page
+            if (question.id === flattenedQuestions[currentPageIndex].id) {
+                nextPage();
+            }
+        }, 300);
+    }
+}
+
+function updateNavigation() {
+    prevBtn.disabled = currentPageIndex === 0;
+    
+    if (currentPageIndex === totalPages - 1) {
+        nextBtn.textContent = 'Evaluate';
+    } else {
+        nextBtn.textContent = 'Next';
+    }
+}
+
+function updateProgressBar() {
+    const progress = ((currentPageIndex + 1) / totalPages) * 100;
+    progressBar.style.width = `${progress}%`;
+    progressText.textContent = `Question ${currentPageIndex + 1} of ${totalPages}`;
+}
+
+function nextPage() {
+    if (currentPageIndex < totalPages - 1) {
+        currentPageIndex++;
+        renderPage();
+    } else {
+        showResults();
+    }
+}
+
+function prevPage() {
+    if (currentPageIndex > 0) {
+        currentPageIndex--;
+        renderPage();
+    }
+}
+
+function showResults() {
+    let totalScore = 0;
+    let detailedHtml = '<h3>Detailed Results</h3><table><thead><tr><th>Question</th><th>Score</th></tr></thead><tbody>';
+
+    flattenedQuestions.forEach(question => {
+        const score = userAnswers[question.id] !== undefined ? userAnswers[question.id] : 0;
+        totalScore += score;
+        detailedHtml += `
+            <tr>
+                <td>${question.title}</td>
+                <td class="score-cell">${score}</td>
+            </tr>
+        `;
+    });
+
+    detailedHtml += '</tbody></table>';
+
+    questionContainer.style.display = 'none';
+    navigation.style.display = 'none';
+    progressContainer.style.display = 'block';
+    document.getElementById('progress-text').textContent = "Evaluation Complete";
+    resultsContainer.style.display = 'block';
+    
+    totalScoreEl.textContent = totalScore;
+    detailedResultsEl.innerHTML = detailedHtml;
+}
+
+function restart() {
+    currentPageIndex = 0;
+    for(const key in userAnswers) {
+        delete userAnswers[key];
+    }
+    
+    questionContainer.style.display = 'block';
+    navigation.style.display = 'flex';
+    resultsContainer.style.display = 'none';
+    detailedResultsEl.innerHTML = '';
+
+    renderPage();
+}
+
+function handleKeyPress(event) {
+    if (resultsContainer.style.display === 'block' || !['0', '1', '2', '3', '4'].includes(event.key)) return;
+    
+    event.preventDefault();
+    const score = parseInt(event.key);
+    
+    const questionIndex = currentPageIndex;
+    const radioToSelect = document.querySelector(`input[name="q${questionIndex}"][value="${score}"]`);
+    if (radioToSelect) {
+        radioToSelect.checked = true;
+        radioToSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
+function printResults() {
+    window.print();
+}
+
+// Initial Setup
+document.addEventListener('DOMContentLoaded', renderPage);
+document.addEventListener('keydown', handleKeyPress);
+
+</script>
+
+</body>
+</html>

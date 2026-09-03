@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDS-UPDRS Part III: Motor Examination</title>
+    <!-- JsBarcode for barcode generation -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <!-- html2pdf for direct PDF downloading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        #app-container {
+            width: 100%;
+            max-width: 800px;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 0.95em;
+        }
+        #question-container {
+            margin-top: 20px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .question-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .option {
+            margin: 10px auto;
+            display: block;
+            cursor: pointer;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            width: 90%;
+            max-width: 650px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .option:hover, .option:focus-within {
+            background-color: #f8f9fa;
+            border-color: #3498db;
+            outline: none;
+        }
+        .option input {
+            margin-right: 12px;
+        }
+        .option label {
+            cursor: pointer;
+            display: inline-block;
+            width: 90%;
+        }
+        .option-score {
+            font-weight: bold;
+            display: inline-block;
+            width: 20px;
+            color: #3498db;
+        }
+        #navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .btn-success {
+            background-color: #27ae60;
+        }
+        .btn-success:hover {
+            background-color: #219653;
+        }
+        #progress-bar-container {
+            width: 100%;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 10px;
+            background-color: #2ecc71;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        #progress-text {
+            text-align: center;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        #results-container {
+            display: none;
+        }
+        .results-actions {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .score-highlight-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 50px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .score-box {
+            text-align: center;
+        }
+        .score-main-val {
+            font-size: 2.8em;
+            font-weight: bold;
+            color: #2c3e50; /* Neutral dark color */
+            margin: 0;
+            line-height: 1.1;
+        }
+        .score-label {
+            text-align: center;
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+
+        #detailed-results {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #detailed-results table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        #detailed-results th, #detailed-results td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+        #detailed-results th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        #detailed-results .score-cell {
+            text-align: center;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        tr {
+            page-break-inside: avoid;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 180px; }
+        .input-group label { font-weight: bold; font-size: 0.9em; color: #2c3e50; }
+        .input-group input, .input-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
+
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <h1>MDS-UPDRS Part III</h1>
+        <p class="subtitle">Motor Examination</p>
+        
+        <div id="progress-container">
+            <div id="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+            <div id="progress-text">Page 1</div>
+        </div>
+
+        <div id="question-container">
+            <!-- Questions will be dynamically inserted here -->
+        </div>
+
+        <div id="navigation">
+            <button id="prev-btn" onclick="prevPage()" disabled>Back</button>
+            <button id="next-btn" onclick="nextPage()">Next</button>
+        </div>
+
+        <div id="results-container">
+            <h2 id="eval-title">Evaluation Complete</h2>
+            
+            <!-- Patient Data Form (Not included in PDF) -->
+            <div id="patient-data-form" style="margin-bottom: 25px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; background: #fafafa;">
+                <h3 style="margin-top: 0; text-align: left;">Patienten Daten & Vergleich</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                    <div class="input-group">
+                        <label>Name</label>
+                        <input type="text" id="pat-name" placeholder="Nachname" oninput="updatePrintView()">
+                    </div>
+                    <div class="input-group">
+                        <label>Vorname</label>
+                        <input type="text" id="pat-vorname" placeholder="Vorname" oninput="updatePrintView()">
+                    </div>
+                    <div class="input-group">
+                        <label>Geburtsdatum</label>
+                        <input type="date" id="pat-dob" oninput="updatePrintView()">
+                    </div>
+                    <div class="input-group">
+                        <label>Fallnummer</label>
+                        <input type="text" id="pat-fallnummer" placeholder="Fallnummer" oninput="updatePrintView()">
+                    </div>
+                    <div class="input-group">
+                        <label>Examiner Initials</label>
+                        <input type="text" id="pat-examiner" placeholder="Initials (z.B. Dr. S)" oninput="updatePrintView()">
+                    </div>
+                    <div class="input-group">
+                        <label>Letzter Score</label>
+                        <input type="number" id="old-score" placeholder="Optional" oninput="updateComparison()">
+                    </div>
+                    
+                    <div style="width: 100%; border-top: 1px dashed #ccc; margin: 10px 0;"></div>
+                    
+                    <div class="input-group">
+                        <label>Status</label>
+                        <select id="pat-status" onchange="toggleOnTime(); updatePrintView()">
+                            <option value="">-- Wählen --</option>
+                            <option value="ON">ON</option>
+                            <option value="OFF">OFF</option>
+                        </select>
+                    </div>
+                    <div class="input-group" id="on-time-group" style="display: none;">
+                        <label>Zeit seit letzter L-Dopa Einnahme</label>
+                        <input type="text" id="pat-on-time" placeholder="z.B. 1.5 Stunden" oninput="updatePrintView()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content to be exported as PDF -->
+            <div id="pdf-content" style="padding: 10px; background: #fff;">
+                
+                <!-- Print Summary Header (Only visible when downloading PDF or if fields are filled) -->
+                <div id="patient-summary" style="display: none; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #2c3e50; padding-bottom: 15px;">
+                    <div class="patient-info-print" style="font-size: 1.1em; line-height: 1.8;">
+                        <h2 style="text-align: left; margin: 0 0 10px 0;">MDS-UPDRS Part III Results</h2>
+                        <p style="margin: 0;"><strong>Name:</strong> <span id="print-name"></span></p>
+                        <p style="margin: 0;"><strong>Vorname:</strong> <span id="print-vorname"></span></p>
+                        <p style="margin: 0;"><strong>Geburtsdatum:</strong> <span id="print-dob"></span></p>
+                        <p style="margin: 0;"><strong>Examiner Initials:</strong> <span id="print-examiner"></span></p>
+                        <p id="print-status-line" style="display: none; margin: 0;">
+                            <strong>Status:</strong> <span id="print-status"></span>
+                            <span id="print-on-time-wrap" style="display: none;"> (<strong>Zeit seit letzter Einnahme:</strong> <span id="print-on-time"></span>)</span>
+                        </p>
+                        <p id="print-comparison" style="display: none; margin: 0; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #ccc;">
+                            <strong>Letzter Score:</strong> <span id="print-old-score"></span> | 
+                            <strong>Differenz:</strong> <span id="print-diff"></span>
+                        </p>
+                    </div>
+                    <div class="barcode-wrapper" style="text-align: right;">
+                        <!-- Using <img> instead of <svg> guarantees html2canvas renders the barcode correctly -->
+                        <img id="barcode" alt="Barcode" />
+                    </div>
+                </div>
+
+                <div id="total-score-display">
+                    <div class="score-highlight-container">
+                        <div class="score-box">
+                            <div class="score-main-val" id="total-score">0</div>
+                            <div class="score-label">Total Score / 132</div>
+                        </div>
+                        
+                        <div id="comparison-container" class="score-box" style="display: none;">
+                            <div class="score-main-val" id="score-diff">0%</div>
+                            <div class="score-label" id="diff-label">Difference (%)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="detailed-results"></div>
+            </div>
+            
+            <div class="results-actions">
+                <button onclick="restart()">Restart</button>
+                <button class="btn-success" onclick="downloadPDF()">Download PDF</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+const originalQuestionsData =[
+    {
+        "id": "3.1", "title": "3.1 Speech", "parts": ["Speech"],
+        "options":[
+            {"score": 0, "text": "Normal: No speech problems."},
+            {"score": 1, "text": "Slight: Loss of modulation, diction, or volume, but still all words easy to understand."},
+            {"score": 2, "text": "Mild: Loss of modulation, diction, or volume, with a few words unclear, but overall sentences easy to follow."},
+            {"score": 3, "text": "Moderate: Speech is difficult to understand to the point that some, but not most, sentences are poorly understood."},
+            {"score": 4, "text": "Severe: Most speech is difficult to understand or unintelligible."}
+        ]
+    },
+    {
+        "id": "3.2", "title": "3.2 Facial Expression", "parts":["Facial Expression"],
+        "options":[
+            {"score": 0, "text": "Normal: Normal facial expression."},
+            {"score": 1, "text": "Slight: Minimal masked facies manifested only by decreased frequency of blinking."},
+            {"score": 2, "text": "Mild: Decreased blinking and masked facies in lower face (fewer movements around mouth), lips not parted."},
+            {"score": 3, "text": "Moderate: Masked facies with lips parted some of the time when the mouth is at rest."},
+            {"score": 4, "text": "Severe: Masked facies with lips parted most of the time when the mouth is at rest."}
+        ]
+    },
+    {
+        "id": "3.3", "title": "3.3 Rigidity", "parts":["Neck", "Right Upper Extremity", "Left Upper Extremity", "Right Lower Extremity", "Left Lower Extremity"],
+        "options":[
+            {"score": 0, "text": "Normal: No rigidity."},
+            {"score": 1, "text": "Slight: Rigidity only detected with activation maneuver."},
+            {"score": 2, "text": "Mild: Rigidity detected without the activation maneuver, but full range of motion is easily achieved."},
+            {"score": 3, "text": "Moderate: Rigidity detected without the activation maneuver; full range of motion is achieved with effort."},
+            {"score": 4, "text": "Severe: Rigidity detected without the activation maneuver and full range of motion not achieved."}
+        ]
+    },
+    {
+        "id": "3.4", "title": "3.4 Finger Tapping", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.5", "title": "3.5 Hand Movements", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.6", "title": "3.6 Pronation-Supination Movements of Hands", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.7", "title": "3.7 Toe Tapping", "parts":["Right Foot", "Left Foot"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.8", "title": "3.8 Leg Agility", "parts":["Right Leg", "Left Leg"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Any of: a) 1-2 interruptions/hesitations; b) slight slowing; c) amplitude decrements near the end."},
+            {"score": 2, "text": "Mild: Any of: a) 3-5 interruptions; b) mild slowing; c) amplitude decrements midway in the sequence."},
+            {"score": 3, "text": "Moderate: Any of: a) >5 interruptions or at least one freeze; b) moderate slowing; c) decrements starting after 1st tap."},
+            {"score": 4, "text": "Severe: Cannot or can only barely perform the task because of slowing, interruptions, or decrements."}
+        ]
+    },
+    {
+        "id": "3.9", "title": "3.9 Arising from Chair", "parts": ["Arising"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems. Able to arise quickly without hesitation."},
+            {"score": 1, "text": "Slight: Slower than normal; or needs >1 attempt; or must move forward in chair. Doesn't use arms of chair."},
+            {"score": 2, "text": "Mild: Pushes self up from arms of seat without difficulty."},
+            {"score": 3, "text": "Moderate: Needs to push off, tends to fall back, may need >1 try using arms of seat, but gets up without help."},
+            {"score": 4, "text": "Severe: Unable to arise without help."}
+        ]
+    },
+    {
+        "id": "3.10", "title": "3.10 Gait", "parts": ["Gait"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Independent walking with minor gait impairment."},
+            {"score": 2, "text": "Mild: Independent walking but with substantial gait impairment."},
+            {"score": 3, "text": "Moderate: Requires an assistive device for safe walking (walking stick, walker) but not a person."},
+            {"score": 4, "text": "Severe: Cannot walk at all or only with another person's assistance."}
+        ]
+    },
+    {
+        "id": "3.11", "title": "3.11 Freezing of Gait", "parts": ["Freezing"],
+        "options":[
+            {"score": 0, "text": "Normal: No freezing."},
+            {"score": 1, "text": "Slight: Freezes on starting, turning, or walking through doorway with a single halt, continues smoothly."},
+            {"score": 2, "text": "Mild: Freezes on starting, turning, or walking through doorway with >1 halt, continues smoothly."},
+            {"score": 3, "text": "Moderate: Freezes once or twice during straight walking."},
+            {"score": 4, "text": "Severe: Freezes multiple times during straight walking."}
+        ]
+    },
+    {
+        "id": "3.12", "title": "3.12 Postural Stability", "parts": ["Stability"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems. Recovers with one or two steps."},
+            {"score": 1, "text": "Slight: 3-5 steps, but subject catches himself/herself."},
+            {"score": 2, "text": "Mild: More than 5 steps, but subject catches himself/herself."},
+            {"score": 3, "text": "Moderate: Stands safely, but with absence of postural response; falls if not caught by examiner."},
+            {"score": 4, "text": "Severe: Very unstable, tends to lose balance spontaneously or with just a gentle pull on the shoulders."}
+        ]
+    },
+    {
+        "id": "3.13", "title": "3.13 Posture", "parts":["Posture"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Not quite erect, but posture could be normal for older person."},
+            {"score": 2, "text": "Mild: Definite flexion, scoliosis or leaning to one side, but can correct posture to normal when asked."},
+            {"score": 3, "text": "Moderate: Stooped posture, scoliosis or leaning to one side that cannot be corrected volitionally."},
+            {"score": 4, "text": "Severe: Flexion, scoliosis or leaning with extreme abnormality of posture."}
+        ]
+    },
+    {
+        "id": "3.14", "title": "3.14 Global Spontaneity of Movement", "parts":["Body Bradykinesia"],
+        "options":[
+            {"score": 0, "text": "Normal: No problems."},
+            {"score": 1, "text": "Slight: Slight global slowness and poverty of spontaneous movements."},
+            {"score": 2, "text": "Mild: Mild global slowness and poverty of spontaneous movements."},
+            {"score": 3, "text": "Moderate: Moderate global slowness and poverty of spontaneous movements."},
+            {"score": 4, "text": "Severe: Severe global slowness and poverty of spontaneous movements."}
+        ]
+    },
+    {
+        "id": "3.15", "title": "3.15 Postural Tremor of the Hands", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No tremor."},
+            {"score": 1, "text": "Slight: Tremor is present but less than 1 cm in amplitude."},
+            {"score": 2, "text": "Mild: Tremor is at least 1 but less than 3 cm in amplitude."},
+            {"score": 3, "text": "Moderate: Tremor is at least 3 but less than 10 cm in amplitude."},
+            {"score": 4, "text": "Severe: Tremor is at least 10 cm in amplitude."}
+        ]
+    },
+    {
+        "id": "3.16", "title": "3.16 Kinetic Tremor of the Hands", "parts":["Right Hand", "Left Hand"],
+        "options":[
+            {"score": 0, "text": "Normal: No tremor."},
+            {"score": 1, "text": "Slight: Tremor is present but less than 1 cm in amplitude."},
+            {"score": 2, "text": "Mild: Tremor is at least 1 but less than 3 cm in amplitude."},
+            {"score": 3, "text": "Moderate: Tremor is at least 3 but less than 10 cm in amplitude."},
+            {"score": 4, "text": "Severe: Tremor is at least 10 cm in amplitude."}
+        ]
+    },
+    {
+        "id": "3.17", "title": "3.17 Rest Tremor Amplitude", "parts":["Right Upper Extremity", "Left Upper Extremity", "Right Lower Extremity", "Left Lower Extremity", "Lip/Jaw"],
+        "options":[
+            {"score": 0, "text": "Normal: No tremor."},
+            {"score": 1, "text": "Slight: < 1 cm in maximal amplitude."},
+            {"score": 2, "text": "Mild: > 1 cm but < 3 cm in maximal amplitude."},
+            {"score": 3, "text": "Moderate: 3 - 10 cm in maximal amplitude."},
+            {"score": 4, "text": "Severe: > 10 cm in maximal amplitude."}
+        ]
+    },
+    {
+        "id": "3.18", "title": "3.18 Constancy of Rest Tremor", "parts":["Constancy"],
+        "options":[
+            {"score": 0, "text": "Normal: No tremor."},
+            {"score": 1, "text": "Slight: Tremor present < 25% of the entire examination period."},
+            {"score": 2, "text": "Mild: Tremor present 26-50% of the entire examination period."},
+            {"score": 3, "text": "Moderate: Tremor present 51-75% of the entire examination period."},
+            {"score": 4, "text": "Severe: Tremor present > 75% of the entire examination period."}
+        ]
+    }
+];
+
+const flattenedQuestions =[];
+originalQuestionsData.forEach(q => {
+    q.parts.forEach(part => {
+        flattenedQuestions.push({
+            id: `${q.id}_${part.replace(/\s/g, '_')}`,
+            title: q.parts.length > 1 ? `${q.title} - ${part}` : q.title,
+            options: q.options
+        });
+    });
+});
+
+let currentPageIndex = 0;
+const questionsPerPage = 1; 
+const totalPages = Math.ceil(flattenedQuestions.length / questionsPerPage);
+const userAnswers = {};
+let currentTotalScore = 0;
+
+const questionContainer = document.getElementById('question-container');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const progressBar = document.getElementById('progress-bar');
+const progressText = document.getElementById('progress-text');
+const resultsContainer = document.getElementById('results-container');
+const navigation = document.getElementById('navigation');
+const progressContainer = document.getElementById('progress-container');
+const totalScoreEl = document.getElementById('total-score');
+const detailedResultsEl = document.getElementById('detailed-results');
+
+function renderPage() {
+    questionContainer.innerHTML = '';
+    window.scrollTo(0, 0);
+
+    const startIndex = currentPageIndex * questionsPerPage;
+    const question = flattenedQuestions[startIndex];
+    renderSingleQuestion(question, startIndex);
+    
+    updateNavigation();
+    updateProgressBar();
+}
+
+function renderSingleQuestion(question, questionIndex) {
+    const questionWrapper = document.createElement('div');
+    questionWrapper.className = 'question-wrapper';
+
+    const questionTitle = document.createElement('div');
+    questionTitle.className = 'question-title';
+    questionTitle.textContent = question.title;
+    questionWrapper.appendChild(questionTitle);
+
+    question.options.forEach((option) => {
+        const optionId = `q${questionIndex}_s${option.score}`;
+        const optionName = `q${questionIndex}`;
+        
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'option';
+        
+        const radioInput = document.createElement('input');
+        radioInput.type = 'radio';
+        radioInput.id = optionId;
+        radioInput.name = optionName;
+        radioInput.value = option.score;
+        radioInput.onchange = () => {
+            saveAnswer(question.id, option.score);
+            checkCompletionAndAdvance();
+        };
+
+        if (userAnswers[question.id] !== undefined && userAnswers[question.id] === option.score) {
+            radioInput.checked = true;
+        }
+
+        const label = document.createElement('label');
+        label.htmlFor = optionId;
+        label.innerHTML = `<span class="option-score">${option.score}</span> ${option.text}`;
+        
+        optionDiv.appendChild(radioInput);
+        optionDiv.appendChild(label);
+        questionWrapper.appendChild(optionDiv);
+    });
+
+    questionContainer.appendChild(questionWrapper);
+}
+
+function saveAnswer(questionId, score) {
+    userAnswers[questionId] = parseInt(score);
+}
+
+function checkCompletionAndAdvance() {
+    const question = flattenedQuestions[currentPageIndex];
+    if (userAnswers[question.id] !== undefined) {
+        setTimeout(() => {
+            if (question.id === flattenedQuestions[currentPageIndex].id) {
+                nextPage();
+            }
+        }, 300);
+    }
+}
+
+function updateNavigation() {
+    prevBtn.disabled = currentPageIndex === 0;
+    
+    if (currentPageIndex === totalPages - 1) {
+        nextBtn.textContent = 'Evaluate';
+    } else {
+        nextBtn.textContent = 'Next';
+    }
+}
+
+function updateProgressBar() {
+    const progress = ((currentPageIndex + 1) / totalPages) * 100;
+    progressBar.style.width = `${progress}%`;
+    progressText.textContent = `Question ${currentPageIndex + 1} of ${totalPages}`;
+}
+
+function nextPage() {
+    if (currentPageIndex < totalPages - 1) {
+        currentPageIndex++;
+        renderPage();
+    } else {
+        showResults();
+    }
+}
+
+function prevPage() {
+    if (currentPageIndex > 0) {
+        currentPageIndex--;
+        renderPage();
+    }
+}
+
+function toggleOnTime() {
+    const status = document.getElementById('pat-status').value;
+    const timeGroup = document.getElementById('on-time-group');
+    if (status === 'ON') {
+        timeGroup.style.display = 'flex';
+    } else {
+        timeGroup.style.display = 'none';
+        document.getElementById('pat-on-time').value = '';
+    }
+}
+
+function updatePrintView() {
+    const name = document.getElementById('pat-name').value;
+    const vorname = document.getElementById('pat-vorname').value;
+    const dob = document.getElementById('pat-dob').value;
+    const fallnummer = document.getElementById('pat-fallnummer').value;
+    const examiner = document.getElementById('pat-examiner').value;
+    const status = document.getElementById('pat-status').value;
+    const onTime = document.getElementById('pat-on-time').value;
+
+    if (name || vorname || dob || fallnummer || examiner || status) {
+        document.getElementById('patient-summary').style.display = 'flex';
+    } else {
+        document.getElementById('patient-summary').style.display = 'none';
+    }
+
+    document.getElementById('print-name').textContent = name;
+    document.getElementById('print-vorname').textContent = vorname;
+    document.getElementById('print-examiner').textContent = examiner;
+    
+    if (status) {
+        document.getElementById('print-status-line').style.display = 'block';
+        document.getElementById('print-status').textContent = status;
+        if (status === 'ON' && onTime) {
+            document.getElementById('print-on-time-wrap').style.display = 'inline';
+            document.getElementById('print-on-time').textContent = onTime;
+        } else {
+            document.getElementById('print-on-time-wrap').style.display = 'none';
+        }
+    } else {
+        document.getElementById('print-status-line').style.display = 'none';
+    }
+    
+    if (dob) {
+        const parts = dob.split('-');
+        document.getElementById('print-dob').textContent = `${parts[2]}.${parts[1]}.${parts[0]}`;
+    } else {
+        document.getElementById('print-dob').textContent = '';
+    }
+    
+    // Generate barcode if fallnummer is provided. Outputting to <img> ensures html2canvas picks it up cleanly.
+    if (fallnummer && typeof JsBarcode !== 'undefined') {
+        document.getElementById('barcode').style.display = 'inline-block';
+        JsBarcode("#barcode", fallnummer, {
+            format: "CODE128",
+            width: 1.5,
+            height: 40,
+            displayValue: true,
+            fontSize: 14,
+            margin: 0
+        });
+    } else {
+        document.getElementById('barcode').style.display = 'none';
+    }
+}
+
+function updateComparison() {
+    const oldScoreInput = document.getElementById('old-score').value;
+    const compContainer = document.getElementById('comparison-container');
+    const diffEl = document.getElementById('score-diff');
+    const diffLabel = document.getElementById('diff-label');
+    const printComparison = document.getElementById('print-comparison');
+    
+    if (oldScoreInput === '') {
+        compContainer.style.display = 'none';
+        printComparison.style.display = 'none';
+        return;
+    }
+    
+    const oldScore = parseInt(oldScoreInput);
+    const diff = currentTotalScore - oldScore;
+    
+    // Calculate percentage difference
+    let percentDiff = 0;
+    if (oldScore !== 0) {
+        percentDiff = ((diff / oldScore) * 100).toFixed(1);
+    }
+
+    compContainer.style.display = 'block';
+    
+    let printText = '';
+    if (diff > 0) {
+        diffEl.textContent = `+${percentDiff}%`;
+        diffLabel.textContent = 'Worse (+)';
+        printText = `+${percentDiff}% (Worse)`;
+    } else if (diff < 0) {
+        diffEl.textContent = `${percentDiff}%`;
+        diffLabel.textContent = 'Better (-)';
+        printText = `${percentDiff}% (Better)`;
+    } else {
+        diffEl.textContent = `0%`;
+        diffLabel.textContent = 'Unchanged';
+        printText = `0% (Unchanged)`;
+    }
+    
+    printComparison.style.display = 'block';
+    document.getElementById('print-old-score').textContent = oldScore;
+    document.getElementById('print-diff').textContent = printText;
+}
+
+function showResults() {
+    currentTotalScore = 0;
+    let detailedHtml = '<table><thead><tr><th>Question</th><th>Score</th></tr></thead><tbody>';
+
+    flattenedQuestions.forEach(question => {
+        const score = userAnswers[question.id] !== undefined ? userAnswers[question.id] : 0;
+        currentTotalScore += score;
+        detailedHtml += `
+            <tr>
+                <td>${question.title}</td>
+                <td class="score-cell">${score}</td>
+            </tr>
+        `;
+    });
+
+    detailedHtml += '</tbody></table>';
+
+    questionContainer.style.display = 'none';
+    navigation.style.display = 'none';
+    progressContainer.style.display = 'none';
+    resultsContainer.style.display = 'block';
+    
+    totalScoreEl.textContent = currentTotalScore;
+    detailedResultsEl.innerHTML = detailedHtml;
+    
+    updateComparison();
+}
+
+function restart() {
+    currentPageIndex = 0;
+    for(const key in userAnswers) {
+        delete userAnswers[key];
+    }
+    currentTotalScore = 0;
+    
+    // Reset Data
+    document.getElementById('pat-name').value = '';
+    document.getElementById('pat-vorname').value = '';
+    document.getElementById('pat-dob').value = '';
+    document.getElementById('pat-fallnummer').value = '';
+    document.getElementById('pat-examiner').value = '';
+    document.getElementById('old-score').value = '';
+    document.getElementById('pat-status').value = '';
+    document.getElementById('pat-on-time').value = '';
+    document.getElementById('on-time-group').style.display = 'none';
+    
+    updatePrintView();
+    updateComparison();
+    
+    questionContainer.style.display = 'block';
+    navigation.style.display = 'flex';
+    progressContainer.style.display = 'block';
+    resultsContainer.style.display = 'none';
+    detailedResultsEl.innerHTML = '';
+
+    renderPage();
+}
+
+function handleKeyPress(event) {
+    if (resultsContainer.style.display === 'block' || !['0', '1', '2', '3', '4'].includes(event.key)) return;
+    
+    event.preventDefault();
+    const score = parseInt(event.key);
+    
+    const questionIndex = currentPageIndex;
+    const radioToSelect = document.querySelector(`input[name="q${questionIndex}"][value="${score}"]`);
+    if (radioToSelect) {
+        radioToSelect.checked = true;
+        radioToSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
+function downloadPDF() {
+    // Show summary specifically for the PDF
+    document.getElementById('patient-summary').style.display = 'flex';
+    
+    const element = document.getElementById('pdf-content');
+    
+    // 1. Remove scrolling constraint so the entire table renders properly
+    detailedResultsEl.style.maxHeight = 'none';
+    detailedResultsEl.style.overflowY = 'visible';
+
+    // 2. TEMPORARY FIX: Remove CSS flex centering offsets to prevent blank space in PDF
+    const originalAlignItems = document.body.style.alignItems;
+    document.body.style.alignItems = 'flex-start'; // Push content to the top
+    
+    const patientForm = document.getElementById('patient-data-form');
+    const evalHeader = document.getElementById('eval-title');
+    
+    patientForm.style.display = 'none'; // Hide the input form
+    evalHeader.style.display = 'none'; // Hide "Evaluation Complete"
+    
+    window.scrollTo(0, 0); // Scroll to top to ensure clean capture
+
+    // Generate filename based on patient name if available
+    const name = document.getElementById('pat-name').value;
+    const vorname = document.getElementById('pat-vorname').value;
+    let filename = 'MDS_UPDRS_Part_III_Results.pdf';
+    if(name || vorname) {
+        filename = `MDS_UPDRS_${name}_${vorname}.pdf`.replace(/\s+/g, '_');
+    }
+
+    const opt = {
+        margin:       10,
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:    { mode: ['css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+        // Revert styling after generating PDF
+        document.body.style.alignItems = originalAlignItems;
+        patientForm.style.display = '';
+        evalHeader.style.display = '';
+        
+        detailedResultsEl.style.maxHeight = '400px';
+        detailedResultsEl.style.overflowY = 'auto';
+        updatePrintView();
+    });
+}
+
+// Initial Setup
+document.addEventListener('DOMContentLoaded', renderPage);
+document.addEventListener('keydown', handleKeyPress);
+
+</script>
+
+</body>
+</html>
