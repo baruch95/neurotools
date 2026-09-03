@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demenz-Konferenz · Board-Besprechung</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f172a; --surface: #111827; --surface-2: #1f2937;
+      --text: #e5e7eb; --muted: #9ca3af; --accent: #60a5fa; --accent-2: #3b82f6;
+      --danger: #ef4444; --border: #374151; --shadow: 0 10px 35px rgba(0,0,0,0.4);
+      --input-bg: #0b1227; --page-grad: #111c3c;
+    }
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f1f5f9; --surface: #ffffff; --surface-2: #f1f5f9;
+      --text: #0f172a; --muted: #64748b; --accent: #2563eb; --accent-2: #3b82f6;
+      --danger: #dc2626; --border: #d1d5db; --shadow: 0 10px 30px rgba(15,23,42,0.12);
+      --input-bg: #ffffff; --page-grad: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at top, var(--page-grad), var(--bg) 45%);
+      color: var(--text); padding: 1.5rem 1rem 4rem;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header.page { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+    h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 2.1rem); letter-spacing: 0.02em; }
+    .subtitle { margin: 0.4rem 0 0; color: var(--muted); max-width: 62ch; line-height: 1.5; }
+    .home-link { color: var(--muted); text-decoration: none; font-size: 0.85rem; }
+    .home-link:hover { color: var(--accent); }
+    .meta-bar { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: flex-end; background: var(--surface); border: 1px solid var(--border); border-radius: 0.9rem; padding: 1rem; margin-bottom: 1.25rem; }
+    .field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .field.grow { flex: 1 1 220px; }
+    .field label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    input, select, textarea { font: inherit; color: var(--text); background: var(--input-bg); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.5rem 0.6rem; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent-2); }
+    textarea { resize: vertical; min-height: 3.2rem; line-height: 1.45; }
+    .layout { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+    @media (min-width: 1000px) { .layout { grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); } }
+    .panel-title { display: flex; align-items: center; justify-content: space-between; margin: 0 0 0.75rem; gap: 0.5rem; }
+    .panel-title h2 { margin: 0; font-size: 1.05rem; }
+    .patient-card { border: 1px solid var(--border); background: var(--surface); border-radius: 0.9rem; padding: 1rem; margin-bottom: 1rem; }
+    .patient-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .patient-head .idx { width: 1.7rem; height: 1.7rem; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: var(--accent-2); color: #06122b; font-weight: 700; font-size: 0.9rem; }
+    .patient-head .name-preview { font-weight: 650; flex: 1; min-width: 0; }
+    .patient-head .name-preview .ph { color: var(--muted); font-weight: 400; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.6rem; }
+    .grid-rows { display: grid; gap: 0.6rem; margin-top: 0.6rem; }
+    .row-line { display: grid; grid-template-columns: 7.5rem 1fr; gap: 0.6rem; align-items: start; }
+    .row-line > label { align-self: center; font-size: 0.85rem; color: var(--muted); }
+    .mri-line { grid-template-columns: 7.5rem 9rem 1fr; }
+    @media (max-width: 560px) { .row-line, .mri-line { grid-template-columns: 1fr; } .row-line > label { align-self: start; } }
+    .barcode-box { margin-top: 0.75rem; padding: 0.6rem; background: #fff; border-radius: 0.5rem; display: inline-flex; flex-direction: column; align-items: center; }
+    .barcode-box svg { display: block; }
+    .btn { font: inherit; cursor: pointer; border-radius: 0.55rem; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); padding: 0.5rem 0.85rem; transition: background 140ms ease, border-color 140ms ease, transform 120ms ease; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .btn:hover { border-color: var(--accent-2); }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { background: var(--accent-2); border-color: var(--accent-2); color: #06122b; font-weight: 650; }
+    .btn.primary:hover { background: var(--accent); }
+    .btn.ghost { background: transparent; }
+    .btn.danger { color: #fff; border-color: var(--danger); background: rgba(239,68,68,0.15); padding: 0.3rem 0.55rem; }
+    .btn.danger:hover { background: var(--danger); }
+    .btn.small { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+    .preview-wrap { position: sticky; top: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.9rem; padding: 1rem; }
+    .paper { background: #fff; color: #111827; border-radius: 0.4rem; padding: 1.4rem 1.5rem; max-height: 70vh; overflow: auto; font-size: 0.9rem; line-height: 1.5; box-shadow: inset 0 0 0 1px #e5e7eb; }
+    .paper h3 { margin: 0 0 0.2rem; font-size: 1.1rem; color: #0f172a; }
+    .paper .doc-meta { color: #475569; font-size: 0.8rem; margin-bottom: 1rem; }
+    .paper .p-block { padding: 0.9rem 0; border-top: 1px solid #e5e7eb; }
+    .paper .p-block:first-of-type { border-top: 0; }
+    .paper .p-name { font-weight: 700; font-size: 1rem; margin: 0 0 0.15rem; }
+    .paper .p-demo { color: #475569; font-size: 0.82rem; margin: 0 0 0.5rem; }
+    .paper ul { margin: 0.3rem 0; padding-left: 1.1rem; }
+    .paper li { margin: 0.1rem 0; }
+    .paper .lbl { font-weight: 600; }
+    .paper .notes { margin-top: 0.5rem; white-space: pre-wrap; }
+    .paper .badge { display: inline-block; padding: 0.05rem 0.45rem; border-radius: 0.4rem; font-size: 0.78rem; font-weight: 600; }
+    .badge.ok { background: #dcfce7; color: #166534; }
+    .badge.warn { background: #fef9c3; color: #854d0e; }
+    .badge.todo { background: #fee2e2; color: #991b1b; }
+    .badge.neutral { background: #e5e7eb; color: #374151; }
+    .paper .pv-barcode { margin-top: 0.5rem; }
+    .paper .muted-empty { color: #94a3b8; }
+    .hint { color: var(--muted); font-size: 0.82rem; margin-top: 0.5rem; }
+    .empty-state { color: var(--muted); padding: 2rem 1rem; text-align: center; border: 1px dashed var(--border); border-radius: 0.9rem; }
+    .toast { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%) translateY(2rem); background: var(--surface-2); color: var(--text); border: 1px solid var(--border); padding: 0.6rem 1rem; border-radius: 0.6rem; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity 200ms ease, transform 200ms ease; z-index: 50; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="page">
+      <div>
+        <h1>Demenz-Konferenz · Board-Besprechung</h1>
+        <p class="subtitle">Patientendaten erfassen, sauber formatiertes Dokument erzeugen und als PDF (echter Text + Fallnummer-Barcode) herunterladen. Läuft komplett offline – keine externen Bibliotheken, kein Server.</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <button class="btn ghost small" id="themeToggle" type="button" title="Hell/Dunkel umschalten" aria-label="Theme umschalten">🌙 Dunkel</button>
+        <a class="home-link" href="../index.html">← Neurotools</a>
+      </div>
+    </header>
+
+    <div class="meta-bar">
+      <div class="field grow">
+        <label for="confTitle">Titel des Dokuments</label>
+        <input id="confTitle" type="text" value="Demenz-Konferenz – Board-Besprechung" />
+      </div>
+      <div class="field">
+        <label for="confDate">Datum der Konferenz</label>
+        <input id="confDate" type="text" placeholder="TT.MM.JJJJ" />
+      </div>
+      <div class="field grow">
+        <label for="confAuthor">Erstellt von (optional)</label>
+        <input id="confAuthor" type="text" placeholder="Name" />
+      </div>
+    </div>
+
+    <div class="layout">
+      <section>
+        <div class="toolbar">
+          <button class="btn primary" id="addPatient">+ Patient hinzufügen</button>
+          <button class="btn" id="downloadPdf">⤓ PDF herunterladen</button>
+          <button class="btn ghost" id="copyText">Text kopieren</button>
+          <button class="btn ghost" id="clearAll">Alle löschen</button>
+        </div>
+        <div id="patients"></div>
+        <button class="btn primary" id="addPatientBottom" style="width:100%; justify-content:center; margin-top:0.25rem;">+ Patient hinzufügen</button>
+        <p class="hint">Eingaben werden automatisch lokal im Browser gespeichert (localStorage). Keine Daten verlassen das Gerät.</p>
+      </section>
+
+      <section>
+        <div class="preview-wrap">
+          <div class="panel-title"><h2>Vorschau</h2></div>
+          <div class="paper" id="paper"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    /* =========================================================
+       Code 128 (Subset B) encoder — dependency free.
+       Returns the bar/space module pattern as an array of
+       integers (module widths), starting with a bar.
+       ========================================================= */
+    const C128 = [
+      "212222","222122","222221","121223","121322","131222","122213","122312","132212","221213",
+      "221312","231212","112232","122132","122231","113222","123122","123221","223211","221132",
+      "221231","213212","223112","312131","311222","321122","321221","312212","322112","322211",
+      "212123","212321","232121","111323","131123","131321","112313","132113","132311","211313",
+      "231113","231311","112133","112331","132131","113123","113321","133121","313121","211331",
+      "231131","213113","213311","213131","311123","311321","331121","312113","312311","332111",
+      "314111","221411","431111","111224","111422","121124","121421","141122","141221","112214",
+      "112412","122114","122411","142112","142211","241211","221114","413111","241112","134111",
+      "111242","121142","121241","114212","124112","124211","411212","421112","421211","212141",
+      "214121","412121","111143","111341","131141","114113","114311","411113","411311","113141",
+      "114131","311141","411131","211412","211214","211232","233111"
+    ];
+    const C128_STOP = "2331112"; // 7 modules
+
+    // Encode a string with Code128-B. Returns { widths:[w...], total:int } or null.
+    function code128bPattern(input) {
+      const s = String(input);
+      for (let i = 0; i < s.length; i++) {
+        const c = s.charCodeAt(i);
+        if (c < 32 || c > 126) return null;
+      }
+      const codes = [104]; // Start B
+      let checksum = 104;
+      for (let i = 0; i < s.length; i++) {
+        const v = s.charCodeAt(i) - 32;
+        codes.push(v);
+        checksum += v * (i + 1);
+      }
+      codes.push(checksum % 103);
+      const widths = [];
+      codes.forEach((code) => {
+        const pat = C128[code];
+        for (let k = 0; k < pat.length; k++) widths.push(parseInt(pat[k], 10));
+      });
+      for (let k = 0; k < C128_STOP.length; k++) widths.push(parseInt(C128_STOP[k], 10));
+      const total = widths.reduce((a, b) => a + b, 0);
+      return { widths, total };
+    }
+
+    // Build an SVG element for on-screen display.
+    function barcodeSVG(value, opts) {
+      const o = Object.assign({ moduleW: 1.7, height: 40, fontSize: 12, quiet: 10, showText: true }, opts || {});
+      const enc = code128bPattern(value);
+      if (!enc) return null;
+      const w = (enc.total + o.quiet * 2) * o.moduleW;
+      const textH = o.showText ? o.fontSize + 4 : 0;
+      const h = o.height + textH;
+      const svgNS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("width", w.toFixed(1));
+      svg.setAttribute("height", h.toFixed(1));
+      svg.setAttribute("viewBox", `0 0 ${w.toFixed(1)} ${h.toFixed(1)}`);
+      const bg = document.createElementNS(svgNS, "rect");
+      bg.setAttribute("x", "0"); bg.setAttribute("y", "0");
+      bg.setAttribute("width", w.toFixed(1)); bg.setAttribute("height", h.toFixed(1));
+      bg.setAttribute("fill", "#ffffff");
+      svg.appendChild(bg);
+      let x = o.quiet * o.moduleW;
+      let isBar = true;
+      enc.widths.forEach((mw) => {
+        const segW = mw * o.moduleW;
+        if (isBar) {
+          const r = document.createElementNS(svgNS, "rect");
+          r.setAttribute("x", x.toFixed(2));
+          r.setAttribute("y", "0");
+          r.setAttribute("width", segW.toFixed(2));
+          r.setAttribute("height", o.height.toFixed(1));
+          r.setAttribute("fill", "#000000");
+          svg.appendChild(r);
+        }
+        x += segW;
+        isBar = !isBar;
+      });
+      if (o.showText) {
+        const t = document.createElementNS(svgNS, "text");
+        t.setAttribute("x", (w / 2).toFixed(1));
+        t.setAttribute("y", (h - 2).toFixed(1));
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("font-family", "monospace");
+        t.setAttribute("font-size", o.fontSize);
+        t.setAttribute("fill", "#000000");
+        t.textContent = String(value);
+        svg.appendChild(t);
+      }
+      return svg;
+    }
+
+    /* =========================================================
+       Minimal PDF writer — dependency free.
+       Real, selectable text (Helvetica, WinAnsi) and vector
+       barcode bars (filled rectangles). Standard 14 fonts, no
+       embedding. Top-left cursor API in points.
+       ========================================================= */
+    function byteLen(str) { return str.length; } // content kept within single-byte chars
+
+    // Unicode → WinAnsi (CP1252) byte map for the typography we emit/accept.
+    const WINANSI_HIGH = {
+      0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85,
+      0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88, 0x2030: 0x89, 0x0160: 0x8A,
+      0x2039: 0x8B, 0x0152: 0x8C, 0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92,
+      0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
+      0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B, 0x0153: 0x9C,
+      0x017E: 0x9E, 0x0178: 0x9F
+    };
+
+    function PDFDoc(pageW, pageH) {
+      const pages = [];
+      let cur = null;
+      function newPage() { cur = []; pages.push(cur); }
+      newPage();
+
+      function pdfString(str) {
+        let out = "";
+        for (let i = 0; i < str.length; i++) {
+          let code = str.charCodeAt(i);
+          if (code > 255) code = WINANSI_HIGH[code] || 63; // map common typography → CP1252 byte
+          const ch = String.fromCharCode(code);
+          if (ch === "(" || ch === ")" || ch === "\\") out += "\\" + ch;
+          else out += ch;
+        }
+        return out;
+      }
+
+      const api = {
+        pageW, pageH,
+        addPage() { newPage(); },
+        pageCount() { return pages.length; },
+        text(x, yTop, str, opts) {
+          opts = opts || {};
+          const font = opts.bold ? "/F2" : "/F1";
+          const size = opts.size || 10;
+          const col = opts.color || [0, 0, 0];
+          const y = pageH - yTop;
+          cur.push(`${col[0]} ${col[1]} ${col[2]} rg`);
+          cur.push("BT");
+          cur.push(`${font} ${size} Tf`);
+          cur.push(`1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm`);
+          cur.push(`(${pdfString(str)}) Tj`);
+          cur.push("ET");
+        },
+        rect(x, yTop, w, h, color) {
+          const c = color || [0, 0, 0];
+          const y = pageH - yTop - h;
+          cur.push(`${c[0]} ${c[1]} ${c[2]} rg`);
+          cur.push(`${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f`);
+        },
+        line(x1, yTop, x2, color, width) {
+          const c = color || [0.78, 0.8, 0.84];
+          const y = pageH - yTop;
+          cur.push(`${c[0]} ${c[1]} ${c[2]} RG`);
+          cur.push(`${(width || 0.4).toFixed(2)} w`);
+          cur.push(`${x1.toFixed(2)} ${y.toFixed(2)} m ${x2.toFixed(2)} ${y.toFixed(2)} l S`);
+        },
+        barcode(x, yTop, value, opts) {
+          opts = opts || {};
+          const enc = code128bPattern(value);
+          if (!enc) return null;
+          const moduleW = opts.moduleW || 1.0;
+          const height = opts.height || 28;
+          const quiet = opts.quiet != null ? opts.quiet : 10;
+          const fontSize = opts.fontSize || 8;
+          const showText = opts.showText !== false;
+          let cx = x + quiet * moduleW;
+          let isBar = true;
+          enc.widths.forEach((mw) => {
+            const segW = mw * moduleW;
+            if (isBar) api.rect(cx, yTop, segW, height, [0, 0, 0]);
+            cx += segW;
+            isBar = !isBar;
+          });
+          const totalW = (enc.total + quiet * 2) * moduleW;
+          let totalH = height;
+          if (showText) {
+            const label = String(value);
+            const lw = api.textWidth(label, fontSize, false);
+            api.text(x + (totalW - lw) / 2, yTop + height + fontSize, label, { size: fontSize });
+            totalH += fontSize + 2;
+          }
+          return { w: totalW, h: totalH };
+        },
+        textWidth(str, size, bold) {
+          const tbl = bold ? HELV_BOLD_W : HELV_W;
+          let w = 0;
+          for (let i = 0; i < str.length; i++) {
+            let c = str.charCodeAt(i);
+            if (c > 255) c = WINANSI_HIGH[c] || 63;
+            w += (tbl[c] != null ? tbl[c] : 556);
+          }
+          return (w / 1000) * size;
+        },
+        build() {
+          const nCatalog = 1, nPages = 2, nF1 = 3, nF2 = 4;
+          const pageObjNums = [], contentObjNums = [];
+          let next = 5;
+          pages.forEach(() => { pageObjNums.push(next++); contentObjNums.push(next++); });
+
+          const slots = {};
+          slots[nCatalog] = `<< /Type /Catalog /Pages ${nPages} 0 R >>`;
+          slots[nPages] = `<< /Type /Pages /Kids [${pageObjNums.map(n => n + " 0 R").join(" ")}] /Count ${pages.length} >>`;
+          slots[nF1] = `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`;
+          slots[nF2] = `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`;
+          pages.forEach((ops, i) => {
+            const content = ops.join("\n");
+            slots[pageObjNums[i]] = `<< /Type /Page /Parent ${nPages} 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /Font << /F1 ${nF1} 0 R /F2 ${nF2} 0 R >> >> /Contents ${contentObjNums[i]} 0 R >>`;
+            slots[contentObjNums[i]] = `<< /Length ${byteLen(content)} >>\nstream\n${content}\nendstream`;
+          });
+
+          const totalObjs = next - 1;
+          let pdf = "%PDF-1.4\n%âãÏÓ\n";
+          const offsets = new Array(totalObjs + 1).fill(0);
+          for (let n = 1; n <= totalObjs; n++) {
+            offsets[n] = byteLen(pdf);
+            pdf += `${n} 0 obj\n${slots[n]}\nendobj\n`;
+          }
+          const xrefPos = byteLen(pdf);
+          pdf += `xref\n0 ${totalObjs + 1}\n`;
+          pdf += "0000000000 65535 f \n";
+          for (let n = 1; n <= totalObjs; n++) {
+            pdf += String(offsets[n]).padStart(10, "0") + " 00000 n \n";
+          }
+          pdf += `trailer\n<< /Size ${totalObjs + 1} /Root ${nCatalog} 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;
+          return pdf;
+        }
+      };
+      return api;
+    }
+
+    // Helvetica advance-width tables (WinAnsi index → width/1000); 556 default.
+    function buildWidthTable(pairs) {
+      const t = new Array(256).fill(556);
+      pairs.forEach(([i, w]) => { t[i] = w; });
+      return t;
+    }
+    const HELV_W = buildWidthTable([
+      [32,278],[33,278],[34,355],[35,556],[36,556],[37,889],[38,667],[39,191],[40,333],[41,333],
+      [42,389],[43,584],[44,278],[45,333],[46,278],[47,278],[48,556],[49,556],[50,556],[51,556],
+      [52,556],[53,556],[54,556],[55,556],[56,556],[57,556],[58,278],[59,278],[60,584],[61,584],
+      [62,584],[63,556],[64,1015],[65,667],[66,667],[67,722],[68,722],[69,667],[70,611],[71,778],
+      [72,722],[73,278],[74,500],[75,667],[76,556],[77,833],[78,722],[79,778],[80,667],[81,778],
+      [82,722],[83,667],[84,611],[85,722],[86,667],[87,944],[88,667],[89,667],[90,611],[91,278],
+      [92,278],[93,278],[94,469],[95,556],[96,333],[97,556],[98,556],[99,500],[100,556],[101,556],
+      [102,278],[103,556],[104,556],[105,222],[106,222],[107,500],[108,222],[109,833],[110,556],
+      [111,556],[112,556],[113,556],[114,333],[115,500],[116,278],[117,556],[118,500],[119,722],
+      [120,500],[121,500],[122,500],[123,334],[124,260],[125,334],[126,584],
+      [196,667],[214,778],[220,722],[223,611],[228,556],[246,556],[252,556]
+    ]);
+    const HELV_BOLD_W = buildWidthTable([
+      [32,278],[33,333],[34,474],[35,556],[36,556],[37,889],[38,722],[39,238],[40,333],[41,333],
+      [42,389],[43,584],[44,278],[45,333],[46,278],[47,278],[48,556],[49,556],[50,556],[51,556],
+      [52,556],[53,556],[54,556],[55,556],[56,556],[57,556],[58,333],[59,333],[60,584],[61,584],
+      [62,584],[63,611],[64,975],[65,722],[66,722],[67,722],[68,722],[69,667],[70,611],[71,778],
+      [72,722],[73,278],[74,556],[75,722],[76,611],[77,833],[78,722],[79,778],[80,667],[81,778],
+      [82,722],[83,667],[84,611],[85,722],[86,667],[87,944],[88,667],[89,667],[90,611],[91,333],
+      [92,278],[93,333],[94,584],[95,556],[96,333],[97,556],[98,611],[99,556],[100,611],[101,556],
+      [102,333],[103,611],[104,611],[105,278],[106,278],[107,556],[108,278],[109,889],[110,611],
+      [111,611],[112,611],[113,611],[114,389],[115,556],[116,333],[117,611],[118,556],[119,778],
+      [120,556],[121,556],[122,500],[123,389],[124,280],[125,389],[126,584],
+      [196,722],[214,778],[220,722],[223,611],[228,556],[246,611],[252,611]
+    ]);
+
+    /* =========================================================
+       App state & logic
+       ========================================================= */
+    const REDCAP_OPTIONS = ["", "angelegt", "noch anzulegen", "kein Konsens", "other"];
+    const ROWS = [
+      { key: "ss", label: "SS" },
+      { key: "npsy", label: "NPSY" },
+      { label: "MRI", dateKey: "mriDate", befundKey: "mriBefund" },
+      { label: "LP", dateKey: "lp", befundKey: "lpBefund" },
+      { key: "nachbesprechung", label: "Nachbesprechung" }
+    ];
+    const STORAGE_KEY = "demenz-konferenz-board-v1";
+    const $ = (s, el = document) => el.querySelector(s);
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const escBr = (s) => esc(s).replace(/\n/g, "<br>"); // preserve line breaks in HTML
+
+    function blankPatient() {
+      return { id: "p" + Math.random().toString(36).slice(2, 9), vorname: "", nachname: "",
+        geburtsdatum: "", sex: "", fallnummer: "", ss: "", npsy: "", lp: "", lpBefund: "",
+        nachbesprechung: "", mriDate: "", mriBefund: "", redcap: "", redcapOther: "", redcapRecordId: "", notizen: "" };
+    }
+    let state = { title: "", date: "", author: "", patients: [] };
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const d = JSON.parse(raw);
+          state.title = d.title || ""; state.date = d.date || ""; state.author = d.author || "";
+          state.patients = Array.isArray(d.patients) ? d.patients : [];
+        }
+      } catch (e) {}
+      if (!state.patients.length) state.patients = [blankPatient()];
+    }
+    let saveTimer = null;
+    function save() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }, 200);
+    }
+
+    function patientCard(p, index) {
+      const nameLabel = (p.nachname || p.vorname)
+        ? `${esc(p.nachname)}${p.nachname && p.vorname ? ", " : ""}${esc(p.vorname)}`
+        : '<span class="ph">Neuer Patient</span>';
+      const rowsHtml = ROWS.map((r) => {
+        if (r.befundKey) {
+          return `<div class="row-line mri-line"><label>${r.label}</label>
+            <input type="text" data-field="${r.dateKey}" placeholder="TT.MM.JJJJ" value="${esc(p[r.dateKey])}" />
+            <textarea data-field="${r.befundKey}" rows="2" placeholder="Befund (optional)">${esc(p[r.befundKey])}</textarea></div>`;
+        }
+        return `<div class="row-line"><label>${r.label}</label>
+            <input type="text" data-field="${r.key}" placeholder="TT.MM.JJJJ" value="${esc(p[r.key])}" /></div>`;
+      }).join("");
+      const redcapOpts = REDCAP_OPTIONS.map((o) =>
+        `<option value="${esc(o)}"${o === p.redcap ? " selected" : ""}>${o === "" ? "– wählen –" : esc(o)}</option>`).join("");
+      const redcapOtherHtml = `<input type="text" data-field="redcapOther" placeholder="Freitext (optional)" value="${esc(p.redcapOther)}" style="${p.redcap === "other" ? "" : "display:none"}" />`;
+      const redcapRecordIdHtml = `<input type="text" data-field="redcapRecordId" placeholder="Record-ID" value="${esc(p.redcapRecordId)}" style="${p.redcap === "angelegt" ? "" : "display:none"}" />`;
+      const card = document.createElement("div");
+      card.className = "patient-card";
+      card.dataset.id = p.id;
+      card.innerHTML = `
+        <div class="patient-head">
+          <span class="idx">${index + 1}</span>
+          <span class="name-preview">${nameLabel}</span>
+          <button class="btn danger small" data-action="remove" title="Patient entfernen">✕</button>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Nachname</label><input type="text" data-field="nachname" value="${esc(p.nachname)}" /></div>
+          <div class="field"><label>Vorname</label><input type="text" data-field="vorname" value="${esc(p.vorname)}" /></div>
+          <div class="field"><label>Geb. Datum</label><input type="text" data-field="geburtsdatum" placeholder="TT.MM.JJJJ" value="${esc(p.geburtsdatum)}" /></div>
+          <div class="field"><label>Geschlecht</label>
+            <select data-field="sex">
+              <option value=""${p.sex === "" ? " selected" : ""}>–</option>
+              <option value="M"${p.sex === "M" ? " selected" : ""}>M</option>
+              <option value="F"${p.sex === "F" ? " selected" : ""}>F</option>
+            </select></div>
+          <div class="field"><label>Fallnummer</label><input type="text" data-field="fallnummer" placeholder="für Barcode" value="${esc(p.fallnummer)}" /></div>
+        </div>
+        <div class="grid-rows">
+          ${rowsHtml}
+          <div class="row-line mri-line"><label>Redcap</label><select data-field="redcap">${redcapOpts}</select>${redcapOtherHtml}${redcapRecordIdHtml}</div>
+          <div class="row-line" style="grid-template-columns: 7.5rem 1fr;"><label>Notizen</label>
+            <textarea data-field="notizen" rows="2" placeholder="Freitext …">${esc(p.notizen)}</textarea></div>
+        </div>
+        <div class="barcode-host"></div>`;
+      renderCardBarcode(card, p);
+      return card;
+    }
+
+    function renderCardBarcode(card, p) {
+      const host = $(".barcode-host", card);
+      host.innerHTML = "";
+      if (p.fallnummer && p.fallnummer.trim()) {
+        const svg = barcodeSVG(p.fallnummer.trim(), { height: 42 });
+        if (svg) { const box = document.createElement("div"); box.className = "barcode-box"; box.appendChild(svg); host.appendChild(box); }
+      }
+    }
+
+    function renderEditor() {
+      const wrap = $("#patients");
+      wrap.innerHTML = "";
+      if (!state.patients.length) {
+        const e = document.createElement("div");
+        e.className = "empty-state";
+        e.textContent = "Noch keine Patienten. Mit „+ Patient hinzufügen“ starten.";
+        wrap.appendChild(e);
+        return;
+      }
+      state.patients.forEach((p, i) => wrap.appendChild(patientCard(p, i)));
+    }
+
+    // effective Redcap text ("other" → free text, fallback to "other")
+    function redcapText(p) {
+      if (!p.redcap) return "";
+      if (p.redcap === "other") return (p.redcapOther && p.redcapOther.trim()) ? p.redcapOther.trim() : "other";
+      if (p.redcap === "angelegt") {
+        return "angelegt" + (p.redcapRecordId && p.redcapRecordId.trim() ? " (Record-ID: " + p.redcapRecordId.trim() + ")" : "");
+      }
+      return p.redcap;
+    }
+    function redcapBadge(p) {
+      if (!p.redcap) return "";
+      const cls = p.redcap === "angelegt" ? "ok"
+        : (p.redcap === "kein Konsens" ? "warn"
+        : (p.redcap === "noch anzulegen" ? "todo" : "neutral"));
+      return `<span class="badge ${cls}">${esc(redcapText(p))}</span>`;
+    }
+    function demoLine(p) {
+      const parts = [];
+      if (p.geburtsdatum) parts.push("geb. " + esc(p.geburtsdatum));
+      if (p.sex) parts.push("(" + esc(p.sex) + ")");
+      if (p.fallnummer) parts.push("Fall-Nr. " + esc(p.fallnummer));
+      return parts.join(" · ");
+    }
+    function previewPatient(p, i) {
+      const fullName = (p.nachname || p.vorname)
+        ? `${esc(p.nachname)}${p.nachname && p.vorname ? ", " : ""}${esc(p.vorname)}`
+        : `<span class="muted-empty">Patient ${i + 1} (ohne Namen)</span>`;
+      const items = [];
+      if (p.ss) items.push(`<li><span class="lbl">SS:</span> ${esc(p.ss)}</li>`);
+      if (p.npsy) items.push(`<li><span class="lbl">NPSY:</span> ${esc(p.npsy)}</li>`);
+      if (p.mriDate || p.mriBefund) {
+        let mri = "";
+        if (p.mriDate) mri += " " + esc(p.mriDate);
+        if (p.mriBefund) mri += (p.mriDate ? " &gt; " : " ") + escBr(p.mriBefund);
+        items.push(`<li><span class="lbl">MRI:</span>${mri}</li>`);
+      }
+      if (p.lp || p.lpBefund) {
+        let lp = "LP:";
+        if (p.lp) lp += " " + esc(p.lp);
+        if (p.lpBefund) lp += (p.lp ? " &gt; " : " ") + escBr(p.lpBefund);
+        items.push(`<li><span class="lbl">${lp}</span></li>`);
+      }
+      if (p.nachbesprechung) items.push(`<li><span class="lbl">Nachbesprechung:</span> ${esc(p.nachbesprechung)}</li>`);
+      if (p.redcap) items.push(`<li><span class="lbl">Redcap:</span> ${redcapBadge(p)}</li>`);
+      let barcodeHtml = "";
+      if (p.fallnummer && p.fallnummer.trim()) {
+        const svg = barcodeSVG(p.fallnummer.trim(), { height: 34, fontSize: 11 });
+        if (svg) barcodeHtml = `<div class="pv-barcode">${svg.outerHTML}</div>`;
+      }
+      return `<div class="p-block">
+          <p class="p-name">${i + 1}. ${fullName}</p>
+          <p class="p-demo">${demoLine(p)}</p>
+          ${items.length ? `<ul>${items.join("")}</ul>` : `<p class="muted-empty">– keine Einträge –</p>`}
+          ${p.notizen ? `<div class="notes"><span class="lbl">Notizen:</span> ${esc(p.notizen)}</div>` : ""}
+          ${barcodeHtml}
+        </div>`;
+    }
+    function renderPreview() {
+      const paper = $("#paper");
+      const metaBits = [];
+      if (state.date) metaBits.push("Datum: " + esc(state.date));
+      if (state.author) metaBits.push("Erstellt von: " + esc(state.author));
+      metaBits.push(state.patients.length + " Patient(en)");
+      paper.innerHTML = `
+        <h3>${esc(state.title) || "Demenz-Konferenz"}</h3>
+        <div class="doc-meta">${metaBits.join(" · ")}</div>
+        ${state.patients.map(previewPatient).join("")}`;
+    }
+    function renderAll() { renderEditor(); renderPreview(); save(); }
+
+    function buildPlainText() {
+      const L = [];
+      L.push((state.title || "Demenz-Konferenz").toUpperCase());
+      const sub = [];
+      if (state.date) sub.push("Datum: " + state.date);
+      if (state.author) sub.push("Erstellt von: " + state.author);
+      if (sub.length) L.push(sub.join("  |  "));
+      L.push("");
+      state.patients.forEach((p, i) => {
+        const name = `${p.nachname}${p.nachname && p.vorname ? ", " : ""}${p.vorname}`.trim() || `Patient ${i + 1}`;
+        const demo = [];
+        if (p.geburtsdatum) demo.push("geb. " + p.geburtsdatum);
+        if (p.sex) demo.push("(" + p.sex + ")");
+        if (p.fallnummer) demo.push("Fall-Nr. " + p.fallnummer);
+        L.push(`${i + 1}. ${name}${demo.length ? "  —  " + demo.join(" · ") : ""}`);
+        if (p.ss) L.push("   - SS: " + p.ss);
+        if (p.npsy) L.push("   - NPSY: " + p.npsy);
+        if (p.mriDate || p.mriBefund) {
+          let mri = "   - MRI:";
+          if (p.mriDate) mri += " " + p.mriDate;
+          if (p.mriBefund) mri += (p.mriDate ? " > " : " ") + p.mriBefund.replace(/\n/g, "\n       ");
+          L.push(mri);
+        }
+        if (p.lp || p.lpBefund) {
+          let lp = "   - LP:";
+          if (p.lp) lp += " " + p.lp;
+          if (p.lpBefund) lp += (p.lp ? " > " : " ") + p.lpBefund.replace(/\n/g, "\n      ");
+          L.push(lp);
+        }
+        if (p.nachbesprechung) L.push("   - Nachbesprechung: " + p.nachbesprechung);
+        if (p.redcap) L.push("   - Redcap: " + redcapText(p));
+        if (p.notizen) L.push("   Notizen: " + p.notizen.replace(/\n/g, "\n            "));
+        L.push("");
+      });
+      return L.join("\n");
+    }
+
+    // greedy word wrap using the PDF metrics; explicit newlines are preserved
+    function wrapText(doc, text, size, bold, maxW) {
+      const lines = [];
+      String(text).split("\n").forEach((para) => {
+        const words = para.split(/\s+/).filter((w) => w.length);
+        if (!words.length) { lines.push(""); return; }
+        let line = "";
+        words.forEach((w) => {
+          const test = line ? line + " " + w : w;
+          if (doc.textWidth(test, size, bold) <= maxW || !line) {
+            line = test;
+          } else {
+            lines.push(line);
+            line = w;
+          }
+        });
+        if (line) lines.push(line);
+      });
+      return lines.length ? lines : [""];
+    }
+
+    /* ---------- PDF document build ---------- */
+    function buildPdf() {
+      const PW = 595.28, PH = 841.89; // A4 in pt
+      const ML = 52, MR = 52, MT = 52, MB = 48;
+      const contentW = PW - ML - MR;
+      const doc = PDFDoc(PW, PH);
+      let y = MT;
+      function ensure(space) { if (y + space > PH - MB) { doc.addPage(); y = MT; } }
+
+      doc.text(ML, y + 12, state.title || "Demenz-Konferenz", { bold: true, size: 16, color: [0.06, 0.09, 0.16] });
+      y += 22;
+      const metaBits = [];
+      if (state.date) metaBits.push("Datum: " + state.date);
+      if (state.author) metaBits.push("Erstellt von: " + state.author);
+      metaBits.push(state.patients.length + " Patient(en)");
+      doc.text(ML, y, metaBits.join("    |    "), { size: 9.5, color: [0.35, 0.39, 0.47] });
+      y += 8;
+      doc.line(ML, y, PW - MR, [0.78, 0.8, 0.84], 0.5);
+      y += 18;
+
+      state.patients.forEach((p, i) => {
+        const name = `${p.nachname}${p.nachname && p.vorname ? ", " : ""}${p.vorname}`.trim() || `Patient ${i + 1}`;
+        ensure(70);
+
+        doc.text(ML, y, `${i + 1}. ${name}`, { bold: true, size: 12.5, color: [0.07, 0.09, 0.15] });
+
+        // Remember on which PDF page the barcode was drawn. Without this,
+        // barcodeBottom from the previous page can push y far down after a
+        // page break inside a long Notizen block.
+        const barcodePage = doc.pageCount();
+        let barcodeBottom = y;
+        if (p.fallnummer && p.fallnummer.trim()) {
+          const enc = code128bPattern(p.fallnummer.trim());
+          if (enc) {
+            const moduleW = 1.05, bh = 30;
+            const bw = (enc.total + 20) * moduleW;
+            const bx = PW - MR - bw;
+            const r = doc.barcode(bx, y - 10, p.fallnummer.trim(), { moduleW, height: bh, fontSize: 8 });
+            if (r) barcodeBottom = (y - 10) + r.h;
+          }
+        }
+        y += 16;
+
+        const demo = [];
+        if (p.geburtsdatum) demo.push("geb. " + p.geburtsdatum);
+        if (p.sex) demo.push("(" + p.sex + ")");
+        if (p.fallnummer) demo.push("Fall-Nr. " + p.fallnummer);
+        if (demo.length) { doc.text(ML, y, demo.join("    ·    "), { size: 9.5, color: [0.31, 0.35, 0.43] }); y += 15; }
+
+        const lines = [];
+        if (p.ss) lines.push(["SS", p.ss]);
+        if (p.npsy) lines.push(["NPSY", p.npsy]);
+        if (p.mriDate || p.mriBefund) {
+          let v = "";
+          if (p.mriDate) v += p.mriDate;
+          if (p.mriBefund) v += (p.mriDate ? " > " : "") + p.mriBefund;
+          lines.push(["MRI", v]);
+        }
+        if (p.lp || p.lpBefund) {
+          let v = "";
+          if (p.lp) v += p.lp;
+          if (p.lpBefund) v += (p.lp ? " > " : "") + p.lpBefund;
+          lines.push(["LP", v]);
+        }
+        if (p.nachbesprechung) lines.push(["Nachbesprechung", p.nachbesprechung]);
+        if (p.redcap) lines.push(["Redcap", redcapText(p)]);
+
+        const indent = ML + 10;
+        lines.forEach(([lbl, val]) => {
+          ensure(15);
+          const bullet = "•  " + lbl + ": ";
+          doc.text(indent, y, bullet, { bold: true, size: 10.5, color: [0.16, 0.2, 0.27] });
+          const bulletW = doc.textWidth(bullet, 10.5, true);
+          const valX = indent + bulletW;
+          const wrapped = wrapText(doc, String(val), 10.5, false, contentW - (valX - ML));
+          doc.text(valX, y, wrapped[0] || "", { size: 10.5, color: [0.12, 0.14, 0.2] });
+          y += 14;
+          for (let k = 1; k < wrapped.length; k++) {
+            ensure(14);
+            doc.text(valX, y, wrapped[k], { size: 10.5, color: [0.12, 0.14, 0.2] });
+            y += 14;
+          }
+        });
+
+        if (p.notizen && p.notizen.trim()) {
+          ensure(15);
+          const nl = "Notizen: ";
+          doc.text(indent, y, nl, { bold: true, size: 10.5, color: [0.16, 0.2, 0.27] });
+          const nlW = doc.textWidth(nl, 10.5, true);
+          const nx = indent + nlW;
+          // Preserve manually entered line breaks and blank lines in notes.
+          const noteText = p.notizen.replace(/\r\n?/g, "\n").trim();
+          const wrapped = wrapText(doc, noteText, 10.5, false, contentW - (nx - ML));
+          doc.text(nx, y, wrapped[0] || "", { size: 10.5, color: [0.12, 0.14, 0.2] });
+          y += 14;
+          for (let k = 1; k < wrapped.length; k++) {
+            ensure(14);
+            doc.text(indent, y, wrapped[k], { size: 10.5, color: [0.12, 0.14, 0.2] });
+            y += 14;
+          }
+        }
+
+        // Only compare coordinates that belong to the same PDF page.
+        // This fixes the large blank area that could appear after Notizen
+        // when the patient's content continued on a new page.
+        if (doc.pageCount() === barcodePage && barcodeBottom > y) y = barcodeBottom;
+
+        // Draw a compact separator only between patients. Avoid an orphaned
+        // separator on a new page and remove the unnecessary trailing rule.
+        if (i < state.patients.length - 1 && y + 18 <= PH - MB) {
+          y += 4;
+          doc.line(ML, y, PW - MR, [0.88, 0.89, 0.92], 0.4);
+          y += 12;
+        }
+      });
+
+      return doc.build();
+    }
+
+    function downloadPdf() {
+      let pdfStr;
+      try { pdfStr = buildPdf(); }
+      catch (e) { toast("PDF-Fehler: " + e.message); return; }
+      const bytes = new Uint8Array(pdfStr.length);
+      for (let i = 0; i < pdfStr.length; i++) {
+        const c = pdfStr.charCodeAt(i);
+        bytes[i] = c > 255 ? 63 : c;
+      }
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const fnDate = (state.date || new Date().toISOString().slice(0, 10)).replace(/[^0-9A-Za-z]+/g, "-");
+      a.href = url;
+      a.download = `Demenz-Konferenz_${fnDate}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast("PDF erstellt.");
+    }
+
+    let toastTimer = null;
+    function toast(msg) {
+      const t = $("#toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+    }
+
+    function findPatient(id) { return state.patients.find((p) => p.id === id); }
+
+    document.addEventListener("input", (e) => {
+      const card = e.target.closest(".patient-card");
+      if (card) {
+        const p = findPatient(card.dataset.id);
+        const field = e.target.dataset.field;
+        if (p && field) {
+          p[field] = e.target.value;
+          save();
+          renderPreview();
+          if (field === "nachname" || field === "vorname") {
+            const np = $(".name-preview", card);
+            if (np) np.innerHTML = (p.nachname || p.vorname)
+              ? `${esc(p.nachname)}${p.nachname && p.vorname ? ", " : ""}${esc(p.vorname)}`
+              : '<span class="ph">Neuer Patient</span>';
+          }
+          if (field === "fallnummer") renderCardBarcode(card, p);
+        }
+        return;
+      }
+      if (e.target.id === "confTitle") { state.title = e.target.value; renderPreview(); save(); }
+      if (e.target.id === "confDate") { state.date = e.target.value; renderPreview(); save(); }
+      if (e.target.id === "confAuthor") { state.author = e.target.value; renderPreview(); save(); }
+    });
+
+    document.addEventListener("change", (e) => {
+      const card = e.target.closest(".patient-card");
+      if (!card) return;
+      const p = findPatient(card.dataset.id);
+      const field = e.target.dataset.field;
+      if (p && field) {
+        p[field] = e.target.value;
+        if (field === "redcap") {
+          const other = card.querySelector('[data-field="redcapOther"]');
+          if (other) other.style.display = e.target.value === "other" ? "" : "none";
+          const recId = card.querySelector('[data-field="redcapRecordId"]');
+          if (recId) recId.style.display = e.target.value === "angelegt" ? "" : "none";
+        }
+        renderPreview(); save();
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      const removeBtn = e.target.closest('[data-action="remove"]');
+      if (removeBtn) {
+        const card = removeBtn.closest(".patient-card");
+        state.patients = state.patients.filter((p) => p.id !== card.dataset.id);
+        if (!state.patients.length) state.patients = [blankPatient()];
+        renderAll();
+      }
+    });
+
+    function addPatient() {
+      state.patients.push(blankPatient());
+      renderAll();
+      const cards = document.querySelectorAll(".patient-card");
+      const last = cards[cards.length - 1];
+      if (last) { last.scrollIntoView({ behavior: "smooth", block: "center" }); const inp = last.querySelector("input"); if (inp) inp.focus(); }
+    }
+    $("#addPatient").addEventListener("click", addPatient);
+    $("#addPatientBottom").addEventListener("click", addPatient);
+
+    $("#downloadPdf").addEventListener("click", downloadPdf);
+
+    $("#copyText").addEventListener("click", async () => {
+      const txt = buildPlainText();
+      try { await navigator.clipboard.writeText(txt); toast("Text in Zwischenablage kopiert."); }
+      catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = txt; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); toast("Text kopiert."); } catch (_) { toast("Kopieren nicht möglich."); }
+        ta.remove();
+      }
+    });
+
+    $("#clearAll").addEventListener("click", () => {
+      if (!confirm("Wirklich alle Patienten und Eingaben löschen?")) return;
+      state = { title: $("#confTitle").value, date: "", author: "", patients: [blankPatient()] };
+      $("#confDate").value = ""; $("#confAuthor").value = "";
+      renderAll();
+    });
+
+    // ---------- theme ----------
+    const THEME_KEY = "demenz-theme";
+    function applyTheme(theme) {
+      const light = theme === "light";
+      document.documentElement.setAttribute("data-theme", light ? "light" : "dark");
+      const btn = $("#themeToggle");
+      if (btn) btn.textContent = light ? "☀️ Hell" : "🌙 Dunkel";
+    }
+    function initTheme() {
+      let t = "dark";
+      try { t = localStorage.getItem(THEME_KEY) || "dark"; } catch (e) {}
+      applyTheme(t);
+    }
+    $("#themeToggle").addEventListener("click", () => {
+      const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+      applyTheme(next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    });
+    initTheme();
+
+    // init
+    load();
+    if (state.title) $("#confTitle").value = state.title; else state.title = $("#confTitle").value;
+    $("#confDate").value = state.date || "";
+    $("#confAuthor").value = state.author || "";
+    renderAll();
+
+    // expose for headless testing
+    window.__demenz = { buildPdf, code128bPattern, get state() { return state; } };
+  })();
+  </script>
+</body>
+</html>

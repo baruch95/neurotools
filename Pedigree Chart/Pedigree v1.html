@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedigree Chart Studio</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --danger: #ef4444;
+            --canvas-bg: #ffffff;
+            --node-stroke: #0f172a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Layout */
+        #sidebar {
+            width: 350px;
+            min-width: 320px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        /* Tab Switcher */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: #111827;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-muted);
+            border: none;
+            background: transparent;
+            transition: all 0.15s;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+        }
+        .tab-btn.active {
+            color: var(--text);
+            background: var(--surface);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .section-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+        button {
+            background: #334155;
+            color: white;
+            border: 1px solid transparent;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+        button:hover { background: #475569; }
+        button.primary { background: var(--primary); }
+        button.primary:hover { background: var(--primary-hover); }
+        button.active { background: #2563eb; border-color: #60a5fa; color: #fff; }
+        button.outline { background: transparent; border-color: var(--border); color: var(--text-muted); }
+        button.outline:hover { background: #334155; color: var(--text); }
+        button.danger { color: var(--danger); background: transparent; border-color: rgba(239, 68, 68, 0.3); }
+        button.danger:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); }
+
+        /* Property Panel */
+        #props-panel {
+            background: #090d16;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        .field label { font-size: 0.75rem; color: var(--text-muted); }
+        input[type="text"], select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: white;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        input[type="text"]:focus, select:focus { border-color: var(--primary); }
+
+        /* Code Editor */
+        textarea#code-input {
+            flex: 1;
+            min-height: 280px;
+            width: 100%;
+            background: #090d16;
+            color: #38bdf8;
+            font-family: "Fira Code", "Consolas", monospace;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            outline: none;
+            resize: none;
+            white-space: pre;
+            tab-size: 2;
+        }
+
+        /* Workspace Canvas (Solid White Blank Canvas) */
+        #workspace {
+            flex: 1;
+            position: relative;
+            background: #ffffff;
+            overflow: auto;
+            display: block;
+        }
+
+        svg#canvas {
+            display: block;
+            background: #ffffff;
+            cursor: default;
+        }
+
+        /* Snipping Overlay */
+        #snip-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1800px;
+            height: 1200px;
+            background: rgba(15, 23, 42, 0.4);
+            cursor: crosshair;
+            z-index: 100;
+        }
+        #snip-box {
+            position: absolute;
+            border: 2px dashed #0284c7;
+            background: rgba(56, 189, 248, 0.18);
+            box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.4);
+            pointer-events: none;
+            display: none;
+        }
+        #snip-controls {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 8px 18px;
+            border-radius: 30px;
+            display: none;
+            gap: 12px;
+            align-items: center;
+            z-index: 110;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+
+        /* Modal for Prompt Help */
+        #modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(2px);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            max-width: 580px;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .modal-card pre {
+            background: #090d16;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: #a5f3fc;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Controls -->
+    <div id="sidebar">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('visual')">🎨 Visual</button>
+            <button class="tab-btn" onclick="switchTab('code')">📝 Code / LLM</button>
+        </div>
+
+        <!-- TAB 1: Visual Mode -->
+        <div id="tab-visual" class="tab-content">
+            <div>
+                <div class="section-title">Add Individual</div>
+                <div class="btn-grid-3">
+                    <button onclick="addNode('male')">□ Male</button>
+                    <button onclick="addNode('female')">○ Female</button>
+                    <button onclick="addNode('unknown')">◇ Unknown</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Connect Relationships</div>
+                <div class="btn-grid">
+                    <button id="btn-mate" onclick="setConnectMode('mate')">⚭ Partnership</button>
+                    <button id="btn-child" onclick="setConnectMode('child')">↓ Child Branch</button>
+                </div>
+                <p id="connect-hint" style="font-size: 0.75rem; color: #60a5fa; margin-top: 6px; display: none;"></p>
+            </div>
+
+            <!-- Property Editor -->
+            <div id="props-panel" style="display: none;">
+                <div class="section-title" id="selected-title">Individual Details</div>
+
+                <div class="field" id="field-sex">
+                    <label>Biological Sex</label>
+                    <select id="node-sex" onchange="updateSelectedNode()">
+                        <option value="male">Male (□)</option>
+                        <option value="female">Female (○)</option>
+                        <option value="unknown">Unknown / Unspecified (◇)</option>
+                    </select>
+                </div>
+
+                <div class="field" id="field-status">
+                    <label>Phenotype Condition Status</label>
+                    <select id="node-status" onchange="updateSelectedNode()">
+                        <option value="normal">Unaffected</option>
+                        <option value="affected">Affected</option>
+                        <option value="carrier">Carrier (Half)</option>
+                        <option value="unknown">Unknown / Uncertain (?)</option>
+                    </select>
+                </div>
+
+                <div class="field" id="field-test">
+                    <label>Genetic Test Result</label>
+                    <select id="node-test" onchange="updateSelectedNode()">
+                        <option value="none">Untested (notest)</option>
+                        <option value="pos">Positive (test+)</option>
+                        <option value="neg">Negative (test-)</option>
+                        <option value="unknown">Unknown / Pending (test?)</option>
+                    </select>
+                </div>
+
+                <div class="field" id="field-flags" style="flex-direction: row; gap: 14px; margin-top: 4px;">
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: white;">
+                        <input type="checkbox" id="node-deceased" onchange="updateSelectedNode()"> Deceased
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: white;">
+                        <input type="checkbox" id="node-proband" onchange="updateSelectedNode()"> Proband (Patient)
+                    </label>
+                </div>
+
+                <button class="danger" style="margin-top: 6px;" onclick="deleteSelected()">Delete Selected</button>
+            </div>
+        </div>
+
+        <!-- TAB 2: Text / LLM Mode -->
+        <div id="tab-code" class="tab-content" style="display: none;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="section-title" style="margin-bottom:0;">Pedigree DSL Code</div>
+                <button class="outline" style="padding: 4px 8px; font-size: 0.75rem;" onclick="openModal()">📋 Prompt</button>
+            </div>
+
+            <textarea id="code-input" spellcheck="false" placeholder="Write or paste pedigree code here..."></textarea>
+
+            <div class="btn-grid">
+                <button class="primary" onclick="renderFromCode()">Apply & Center</button>
+                <button class="outline" onclick="syncCodeFromCanvas()">Sync from Visual</button>
+            </div>
+        </div>
+
+        <!-- Bottom Actions -->
+        <div style="padding: 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+            <div class="btn-grid">
+                <button class="primary" onclick="startScreenshotMode()">📸 Snip & Save JPEG</button>
+                <button class="outline" onclick="exportSVG()">Export SVG</button>
+            </div>
+            <button class="danger" style="width: 100%;" onclick="clearCanvas()">Clear All</button>
+        </div>
+    </div>
+
+    <!-- Canvas Workspace (Blank White) -->
+    <div id="workspace">
+        <svg id="canvas" width="1800" height="1200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <!-- Embedded CSS rules for 100% standalone fidelity -->
+                <style>
+                    .ped-shape { stroke: #0f172a; stroke-width: 2.5; cursor: move; }
+                    .ped-shape.selected { stroke: #2563eb !important; stroke-width: 3.5; }
+                    .ped-line { stroke: #0f172a; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: none; cursor: pointer; }
+                    .ped-line.selected { stroke: #2563eb !important; stroke-width: 3.5; }
+                    .unknown-qmark { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; font-weight: 800; fill: #0f172a; text-anchor: middle; pointer-events: none; }
+                    .test-badge { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; font-size: 13px; font-weight: 800; fill: #0f172a; text-anchor: middle; pointer-events: none; }
+                    .gen-label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; font-weight: 700; fill: #94a3b8; text-anchor: end; pointer-events: none; }
+                    .legend-bg { fill: rgba(255, 255, 255, 0.98); stroke: #cbd5e1; stroke-width: 1.5; rx: 8; ry: 8; filter: url(#legend-shadow); }
+                    .legend-header-bg { fill: #f8fafc; cursor: move; rx: 8; ry: 8; }
+                    .legend-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11px; fill: #0f172a; font-weight: 500; }
+                    .legend-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 700; fill: #475569; cursor: move; }
+                </style>
+
+                <!-- Carrier Half-and-Half Gradient -->
+                <linearGradient id="carrier-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="50%" stop-color="#0f172a" />
+                    <stop offset="50%" stop-color="#ffffff" />
+                </linearGradient>
+
+                <!-- Soft Drop Shadow for Floating Legend -->
+                <filter id="legend-shadow" x="-10%" y="-10%" width="130%" height="130%">
+                    <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.08" />
+                </filter>
+            </defs>
+
+            <!-- Solid Blank White Canvas -->
+            <rect width="1800" height="1200" fill="#ffffff" />
+
+            <!-- Layers -->
+            <g id="grid-layer"></g>
+            <g id="links-layer"></g>
+            <g id="nodes-layer"></g>
+            <g id="legend-layer" transform="translate(1420, 50)"></g>
+        </svg>
+
+        <!-- Snipping Overlay -->
+        <div id="snip-overlay">
+            <div id="snip-box"></div>
+        </div>
+
+        <!-- Snipping Toolbar -->
+        <div id="snip-controls">
+            <span id="snip-dim" style="font-size: 0.82rem; font-weight: 600; color: #38bdf8;">Drag across canvas to choose capture area</span>
+            <button class="primary" id="btn-save-snip" style="display:none;" onclick="downloadScreenshotJPEG()">Save JPEG</button>
+            <button class="outline" onclick="exitScreenshotMode()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- LLM Prompt Helper Modal -->
+    <div id="modal">
+        <div class="modal-card">
+            <h2 style="font-size: 1rem;">System Prompt for LLMs</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+                Copy this prompt and paste it into ChatGPT / Claude along with your clinical vignette or family history.
+            </p>
+            <pre id="prompt-text">Generate standardized pedigree code matching this syntax:
+
+# SYNTAX:
+# [ID]: [Sex: M/F/U] [Status: normal/affected/carrier/unknown] [GeneticTest: test+ / test- / test? / notest] [deceased] [proband]
+
+# Example:
+I-1: M normal deceased notest
+I-2: F carrier test+
+II-1: M affected test+
+II-2: F carrier notest
+II-3: M normal test-
+II-4: U unknown test?
+III-1: F affected proband test+
+III-2: M normal notest
+
+# RELATIONSHIPS:
+I-1 + I-2 -> II-1, II-2, II-4
+II-2 + II-3 -> III-1, III-2
+
+Generate pedigree code for:</pre>
+            <div style="display:flex; justify-content: flex-end; gap:8px;">
+                <button class="primary" onclick="copyPrompt()">Copy Prompt</button>
+                <button class="outline" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let nodes = [];
+        let links = [];
+        let selectedNodeId = null;
+        let selectedLinkId = null;
+        let connectMode = null;
+        let connectSourceId = null;
+        let draggingNode = null;
+        let dragOffset = { x: 0, y: 0 };
+
+        // Floating SVG Legend Position
+        let legendPos = { x: 1440, y: 60 };
+        let isDraggingLegend = false;
+        let legendDragOffset = { x: 0, y: 0 };
+
+        const NODE_SIZE = 34;
+        const GEN_HEIGHT = 140;
+        const NODE_GAP = 95;
+        const TOP_PADDING = 120;
+        const LEFT_PADDING = 120;
+        const CANVAS_WIDTH = 1800;
+
+        const workspace = document.getElementById('workspace');
+        const canvas = document.getElementById('canvas');
+        const nodesLayer = document.getElementById('nodes-layer');
+        const linksLayer = document.getElementById('links-layer');
+        const gridLayer = document.getElementById('grid-layer');
+        const legendLayer = document.getElementById('legend-layer');
+        const codeInput = document.getElementById('code-input');
+
+        // Initial Demo Chart
+        function initDefaultData() {
+            const initialCode = `# Generation I
+I-1: M normal deceased notest
+I-2: F carrier test+
+
+# Generation II
+II-1: M affected test+
+II-2: F carrier notest
+II-3: M normal test-
+II-4: U unknown test?
+
+# Generation III
+III-1: F affected proband test+
+III-2: M normal notest
+
+# Relationships
+I-1 + I-2 -> II-1, II-2, II-4
+II-2 + II-3 -> III-1, III-2`;
+
+            codeInput.value = initialCode;
+            parseAndLayout(initialCode);
+        }
+
+        // Tab Switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach((b, i) => {
+                b.classList.toggle('active', (tab === 'visual' && i === 0) || (tab === 'code' && i === 1));
+            });
+            document.getElementById('tab-visual').style.display = tab === 'visual' ? 'flex' : 'none';
+            document.getElementById('tab-code').style.display = tab === 'code' ? 'flex' : 'none';
+
+            if (tab === 'code') syncCodeFromCanvas();
+        }
+
+        // Add Individual Manually
+        function addNode(type) {
+            const count = nodes.length + 1;
+            const id = `Ind-${count}`;
+            const newNode = {
+                id: id,
+                gen: 'II',
+                type: type,
+                status: 'normal',
+                test: 'none',
+                deceased: false,
+                proband: false,
+                x: 900 + (nodes.length * 25) % 200,
+                y: TOP_PADDING + 80
+            };
+            nodes.push(newNode);
+            selectNode(id);
+            render();
+        }
+
+        // Connection Modes
+        function setConnectMode(mode) {
+            if (connectMode === mode) {
+                cancelConnectMode();
+                return;
+            }
+            connectMode = mode;
+            connectSourceId = null;
+            document.getElementById('btn-mate').classList.toggle('active', mode === 'mate');
+            document.getElementById('btn-child').classList.toggle('active', mode === 'child');
+            
+            const hint = document.getElementById('connect-hint');
+            hint.style.display = 'block';
+            if (mode === 'mate') hint.innerText = "Click 1st partner, then 2nd partner.";
+            if (mode === 'child') hint.innerText = "Click marriage line, then click child.";
+        }
+
+        function cancelConnectMode() {
+            connectMode = null;
+            connectSourceId = null;
+            document.getElementById('btn-mate').classList.remove('active');
+            document.getElementById('btn-child').classList.remove('active');
+            document.getElementById('connect-hint').style.display = 'none';
+        }
+
+        // Selection & Property Panel
+        function selectNode(id) {
+            selectedNodeId = id;
+            selectedLinkId = null;
+            updatePropsPanel();
+            render();
+        }
+
+        function selectLink(id) {
+            selectedLinkId = id;
+            selectedNodeId = null;
+            updatePropsPanel();
+            render();
+        }
+
+        function clearSelection() {
+            selectedNodeId = null;
+            selectedLinkId = null;
+            updatePropsPanel();
+            render();
+        }
+
+        function updatePropsPanel() {
+            const panel = document.getElementById('props-panel');
+            const fieldSex = document.getElementById('field-sex');
+            const fieldStatus = document.getElementById('field-status');
+            const fieldTest = document.getElementById('field-test');
+            const fieldFlags = document.getElementById('field-flags');
+
+            if (selectedNodeId) {
+                const node = nodes.find(n => n.id === selectedNodeId);
+                if (!node) return;
+                panel.style.display = 'flex';
+                fieldSex.style.display = 'flex';
+                fieldStatus.style.display = 'flex';
+                fieldTest.style.display = 'flex';
+                fieldFlags.style.display = 'flex';
+                document.getElementById('selected-title').innerText = `Individual (${node.id})`;
+                document.getElementById('node-sex').value = node.type;
+                document.getElementById('node-status').value = node.status;
+                document.getElementById('node-test').value = node.test || 'none';
+                document.getElementById('node-deceased').checked = node.deceased;
+                document.getElementById('node-proband').checked = node.proband;
+            } else if (selectedLinkId) {
+                panel.style.display = 'flex';
+                fieldSex.style.display = 'none';
+                fieldStatus.style.display = 'none';
+                fieldTest.style.display = 'none';
+                fieldFlags.style.display = 'none';
+                document.getElementById('selected-title').innerText = `Relationship Line`;
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        function updateSelectedNode() {
+            if (!selectedNodeId) return;
+            const node = nodes.find(n => n.id === selectedNodeId);
+            if (!node) return;
+
+            node.type = document.getElementById('node-sex').value;
+            node.status = document.getElementById('node-status').value;
+            node.test = document.getElementById('node-test').value;
+            node.deceased = document.getElementById('node-deceased').checked;
+            node.proband = document.getElementById('node-proband').checked;
+            render();
+        }
+
+        function deleteSelected() {
+            if (selectedNodeId) {
+                links = links.filter(l => l.from !== selectedNodeId && l.to !== selectedNodeId && l.id !== selectedNodeId);
+                nodes = nodes.filter(n => n.id !== selectedNodeId);
+                selectedNodeId = null;
+            } else if (selectedLinkId) {
+                links = links.filter(l => l.id !== selectedLinkId && l.from !== selectedLinkId);
+                selectedLinkId = null;
+            }
+            updatePropsPanel();
+            render();
+        }
+
+        function clearCanvas() {
+            if (confirm("Clear entire pedigree chart?")) {
+                nodes = [];
+                links = [];
+                clearSelection();
+                render();
+            }
+        }
+
+        // Sync: Visual to Code
+        function syncCodeFromCanvas() {
+            let code = '# Individuals\n';
+            nodes.forEach(n => {
+                let sex = 'M';
+                if (n.type === 'female') sex = 'F';
+                if (n.type === 'unknown') sex = 'U';
+
+                let testStr = 'notest';
+                if (n.test === 'pos') testStr = 'test+';
+                if (n.test === 'neg') testStr = 'test-';
+                if (n.test === 'unknown') testStr = 'test?';
+                if (n.test === 'none') testStr = 'notest';
+
+                const flags = [
+                    testStr,
+                    n.deceased ? 'deceased' : '',
+                    n.proband ? 'proband' : ''
+                ].filter(Boolean).join(' ');
+
+                code += `${n.id}: ${sex} ${n.status} ${flags}\n`;
+            });
+
+            code += '\n# Relationships\n';
+            links.filter(l => l.type === 'mate').forEach(mate => {
+                const children = links.filter(l => l.type === 'child' && l.from === mate.id).map(c => c.to);
+                if (children.length > 0) {
+                    code += `${mate.from} + ${mate.to} -> ${children.join(', ')}\n`;
+                } else {
+                    code += `${mate.from} + ${mate.to}\n`;
+                }
+            });
+            codeInput.value = code.trim();
+        }
+
+        // Sync: Code to Visual & Center Patient
+        function renderFromCode() {
+            parseAndLayout(codeInput.value);
+        }
+
+        function parseAndLayout(text) {
+            const lines = text.split('\n');
+            const newNodes = [];
+            const newLinks = [];
+
+            lines.forEach(rawLine => {
+                let line = rawLine.trim();
+                if (!line || line.startsWith('#') || line.startsWith('//')) return;
+
+                if (line.includes('+')) {
+                    const parts = line.split('->');
+                    const parents = parts[0].split('+').map(s => s.trim());
+                    const children = parts[1] ? parts[1].split(',').map(s => s.trim()).filter(Boolean) : [];
+                    
+                    if (parents.length === 2) {
+                        const mateId = `rel_${parents[0]}_${parents[1]}`;
+                        newLinks.push({ id: mateId, type: 'mate', from: parents[0], to: parents[1] });
+                        children.forEach(cid => {
+                            newLinks.push({ id: `ch_${mateId}_${cid}`, type: 'child', from: mateId, to: cid });
+                        });
+                    }
+                    return;
+                }
+
+                if (line.includes(':')) {
+                    const [idPart, rest] = line.split(':');
+                    const id = idPart.trim();
+                    let desc = rest.trim();
+
+                    desc = desc.replace(/"([^"]+)"/, '').trim();
+                    const tokens = desc.toLowerCase().split(/\s+/);
+                    
+                    let type = 'male';
+                    if (tokens.includes('f') || tokens.includes('female')) type = 'female';
+                    if (tokens.includes('u') || tokens.includes('unknown_sex') || tokens.includes('other')) type = 'unknown';
+
+                    let status = 'normal';
+                    if (tokens.includes('affected')) status = 'affected';
+                    if (tokens.includes('carrier')) status = 'carrier';
+                    if (tokens.includes('unknown') || tokens.includes('?')) status = 'unknown';
+
+                    let test = 'none';
+                    if (tokens.includes('notest') || tokens.includes('untested') || tokens.includes('notested') || tokens.includes('testnone')) {
+                        test = 'none';
+                    } else if (tokens.includes('test+') || tokens.includes('pos') || tokens.includes('+')) {
+                        test = 'pos';
+                    } else if (tokens.includes('test-') || tokens.includes('neg') || tokens.includes('-')) {
+                        test = 'neg';
+                    } else if (tokens.includes('test?') || tokens.includes('unknown_test')) {
+                        test = 'unknown';
+                    }
+
+                    const deceased = tokens.includes('deceased') || tokens.includes('dead');
+                    const proband = tokens.includes('proband') || tokens.includes('patient');
+
+                    let gen = "I";
+                    if (id.includes('-')) gen = id.split('-')[0].toUpperCase();
+
+                    newNodes.push({ id, gen, type, status, test, deceased, proband, x: 0, y: 0 });
+                }
+            });
+
+            // Calculate Grid Levels
+            const generations = {};
+            const genOrder = [];
+            newNodes.forEach(node => {
+                if (!generations[node.gen]) {
+                    generations[node.gen] = [];
+                    genOrder.push(node.gen);
+                }
+                generations[node.gen].push(node);
+            });
+
+            genOrder.forEach((genKey, genIdx) => {
+                const genNodes = generations[genKey];
+                const y = TOP_PADDING + (genIdx * GEN_HEIGHT);
+                const totalWidth = genNodes.length * NODE_GAP;
+                const startX = (CANVAS_WIDTH / 2) - (totalWidth / 2);
+
+                genNodes.forEach((node, nodeIdx) => {
+                    node.x = startX + (nodeIdx * NODE_GAP);
+                    node.y = y;
+                });
+            });
+
+            newLinks.filter(l => l.type === 'mate').forEach(rel => {
+                const n1 = newNodes.find(n => n.id === rel.from);
+                const n2 = newNodes.find(n => n.id === rel.to);
+                if (n1 && n2 && n1.gen === n2.gen) {
+                    if (Math.abs(n1.x - n2.x) > NODE_GAP) {
+                        n2.x = n1.x + 60;
+                    }
+                }
+            });
+
+            // Center Patient (Proband)
+            const patient = newNodes.find(n => n.proband);
+            const targetCenterX = CANVAS_WIDTH / 2;
+
+            if (patient) {
+                const shiftX = targetCenterX - patient.x;
+                newNodes.forEach(n => { n.x += shiftX; });
+            } else if (newNodes.length > 0) {
+                const xs = newNodes.map(n => n.x);
+                const midX = (Math.min(...xs) + Math.max(...xs)) / 2;
+                const shiftX = targetCenterX - midX;
+                newNodes.forEach(n => { n.x += shiftX; });
+            }
+
+            nodes = newNodes;
+            links = newLinks;
+            clearSelection();
+            render();
+
+            setTimeout(() => {
+                workspace.scrollLeft = (CANVAS_WIDTH - workspace.clientWidth) / 2;
+                workspace.scrollTop = 0;
+            }, 50);
+        }
+
+        // Render Canvas + Integrated Vector Elements
+        function render() {
+            linksLayer.innerHTML = '';
+            nodesLayer.innerHTML = '';
+            gridLayer.innerHTML = '';
+            legendLayer.innerHTML = '';
+
+            // Generation Markers
+            const drawnGens = new Set();
+            nodes.forEach(node => {
+                if (node.gen && !drawnGens.has(node.gen)) {
+                    drawnGens.add(node.gen);
+                    const genText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    genText.setAttribute('x', LEFT_PADDING - 40);
+                    genText.setAttribute('y', node.y + 6);
+                    genText.setAttribute('class', 'gen-label');
+                    genText.textContent = node.gen;
+                    gridLayer.appendChild(genText);
+                }
+            });
+
+            // 1. Partnerships & Offspring Lines
+            links.filter(l => l.type === 'mate').forEach(link => {
+                const p1 = nodes.find(n => n.id === link.from);
+                const p2 = nodes.find(n => n.id === link.to);
+                if (!p1 || !p2) return;
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', p1.x);
+                line.setAttribute('y1', p1.y);
+                line.setAttribute('x2', p2.x);
+                line.setAttribute('y2', p2.y);
+                line.setAttribute('class', `ped-line ${selectedLinkId === link.id ? 'selected' : ''}`);
+
+                line.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (connectMode === 'child') {
+                        connectSourceId = link.id;
+                        document.getElementById('connect-hint').innerText = "Now click a child individual.";
+                    } else {
+                        selectLink(link.id);
+                    }
+                });
+
+                linksLayer.appendChild(line);
+
+                const childLinks = links.filter(l => l.type === 'child' && l.from === link.id);
+                if (childLinks.length > 0) {
+                    const midX = (p1.x + p2.x) / 2;
+                    const midY = (p1.y + p2.y) / 2;
+                    const dropY = midY + 40;
+
+                    const stem = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    stem.setAttribute('x1', midX);
+                    stem.setAttribute('y1', midY);
+                    stem.setAttribute('x2', midX);
+                    stem.setAttribute('y2', dropY);
+                    stem.setAttribute('class', 'ped-line');
+                    linksLayer.appendChild(stem);
+
+                    const childNodes = childLinks.map(cl => nodes.find(n => n.id === cl.to)).filter(Boolean);
+                    if (childNodes.length > 0) {
+                        const childXs = childNodes.map(c => c.x);
+                        const minChildX = Math.min(...childXs, midX);
+                        const maxChildX = Math.max(...childXs, midX);
+
+                        const sibBar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        sibBar.setAttribute('x1', minChildX);
+                        sibBar.setAttribute('y1', dropY);
+                        sibBar.setAttribute('x2', maxChildX);
+                        sibBar.setAttribute('y2', dropY);
+                        sibBar.setAttribute('class', 'ped-line');
+                        linksLayer.appendChild(sibBar);
+
+                        childNodes.forEach(child => {
+                            const drop = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                            drop.setAttribute('x1', child.x);
+                            drop.setAttribute('y1', dropY);
+                            drop.setAttribute('x2', child.x);
+                            drop.setAttribute('y2', child.y - (NODE_SIZE / 2));
+                            drop.setAttribute('class', 'ped-line');
+                            linksLayer.appendChild(drop);
+                        });
+                    }
+                }
+            });
+
+            // 2. Nodes
+            nodes.forEach(node => {
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.setAttribute('class', `node ${selectedNodeId === node.id ? 'selected' : ''}`);
+                group.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+
+                let fill = '#ffffff';
+                if (node.status === 'affected') fill = '#0f172a';
+                if (node.status === 'carrier') fill = 'url(#carrier-gradient)';
+
+                let shape;
+                const r = NODE_SIZE / 2;
+
+                if (node.type === 'male') {
+                    shape = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    shape.setAttribute('x', -r);
+                    shape.setAttribute('y', -r);
+                    shape.setAttribute('width', NODE_SIZE);
+                    shape.setAttribute('height', NODE_SIZE);
+                } else if (node.type === 'female') {
+                    shape = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    shape.setAttribute('cx', 0);
+                    shape.setAttribute('cy', 0);
+                    shape.setAttribute('r', r);
+                } else {
+                    shape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    const d = r + 2;
+                    shape.setAttribute('points', `0,${-d} ${d},0 0,${d} ${-d},0`);
+                }
+
+                shape.setAttribute('class', `ped-shape ${selectedNodeId === node.id ? 'selected' : ''}`);
+                shape.setAttribute('fill', fill);
+                group.appendChild(shape);
+
+                // Unknown Status '?'
+                if (node.status === 'unknown') {
+                    const qmark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    qmark.setAttribute('x', 0);
+                    qmark.setAttribute('y', 5);
+                    qmark.setAttribute('class', 'unknown-qmark');
+                    qmark.textContent = '?';
+                    group.appendChild(qmark);
+                }
+
+                // Genetic Test Symbol UNDER shape
+                if (node.test && node.test !== 'none') {
+                    const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    badge.setAttribute('x', 0);
+                    badge.setAttribute('y', NODE_SIZE / 2 + 15);
+                    badge.setAttribute('class', 'test-badge');
+                    
+                    if (node.test === 'pos') badge.textContent = '+';
+                    if (node.test === 'neg') badge.textContent = '–';
+                    if (node.test === 'unknown') badge.textContent = '?';
+                    
+                    group.appendChild(badge);
+                }
+
+                // Deceased
+                if (node.deceased) {
+                    const slash = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    const offset = NODE_SIZE / 2 + 5;
+                    slash.setAttribute('x1', -offset);
+                    slash.setAttribute('y1', offset);
+                    slash.setAttribute('x2', offset);
+                    slash.setAttribute('y2', -offset);
+                    slash.setAttribute('class', 'ped-line');
+                    group.appendChild(slash);
+                }
+
+                // Proband Arrow
+                if (node.proband) {
+                    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const ax = -NODE_SIZE / 2 - 14;
+                    const ay = NODE_SIZE / 2 + 14;
+                    arrow.setAttribute('d', `M ${ax} ${ay} L ${-NODE_SIZE/2 - 2} ${NODE_SIZE/2 + 2} M ${-NODE_SIZE/2 - 2} ${NODE_SIZE/2 + 2} L ${-NODE_SIZE/2 - 8} ${NODE_SIZE/2 + 2} M ${-NODE_SIZE/2 - 2} ${NODE_SIZE/2 + 2} L ${-NODE_SIZE/2 - 2} ${NODE_SIZE/2 + 8}`);
+                    arrow.setAttribute('stroke', '#0f172a');
+                    arrow.setAttribute('stroke-width', '2.5');
+                    arrow.setAttribute('fill', 'none');
+                    group.appendChild(arrow);
+                }
+
+                // Dragging & Click Events
+                group.addEventListener('mousedown', (e) => {
+                    if (connectMode || isSnipping) return;
+                    draggingNode = node;
+                    dragOffset = { x: e.clientX - node.x, y: e.clientY - node.y };
+                    selectNode(node.id);
+                    e.stopPropagation();
+                });
+
+                group.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handleNodeClick(node.id);
+                });
+
+                nodesLayer.appendChild(group);
+            });
+
+            // 3. Render Integrated Vector Legend
+            renderVectorLegend();
+        }
+
+        // Render Integrated Vector Legend inside SVG Canvas
+        function renderVectorLegend() {
+            legendLayer.setAttribute('transform', `translate(${legendPos.x}, ${legendPos.y})`);
+            
+            const w = 240;
+            const h = 175;
+
+            // Background
+            const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bg.setAttribute('width', w);
+            bg.setAttribute('height', h);
+            bg.setAttribute('class', 'legend-bg');
+            legendLayer.appendChild(bg);
+
+            // Drag Header
+            const header = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            header.setAttribute('width', w);
+            header.setAttribute('height', 26);
+            header.setAttribute('class', 'legend-header-bg');
+            legendLayer.appendChild(header);
+
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            title.setAttribute('x', 10);
+            title.setAttribute('y', 17);
+            title.setAttribute('class', 'legend-title');
+            title.textContent = "⠿ Legend";
+            legendLayer.appendChild(title);
+
+            // Drag Header Event
+            header.addEventListener('mousedown', (e) => {
+                if (isSnipping) return;
+                isDraggingLegend = true;
+                legendDragOffset = {
+                    x: e.clientX - legendPos.x,
+                    y: e.clientY - legendPos.y
+                };
+                e.stopPropagation();
+            });
+
+            // Row 1: Sex (y: 48)
+            createLegendItem(legendLayer, 18, 48, 'male', 'normal', 'Male');
+            createLegendItem(legendLayer, 90, 48, 'female', 'normal', 'Female');
+            createLegendItem(legendLayer, 165, 48, 'unknown', 'normal', 'Unknown');
+
+            // Row 2: Condition (y: 82)
+            createLegendItem(legendLayer, 18, 82, 'male', 'affected', 'Affected');
+            createLegendItem(legendLayer, 90, 82, 'female', 'carrier', 'Carrier');
+            createLegendItem(legendLayer, 165, 82, 'male', 'unknown', 'Status ?');
+
+            // Row 3: Tests (y: 116)
+            createLegendBadge(legendLayer, 18, 116, '+', 'test+');
+            createLegendBadge(legendLayer, 90, 116, '–', 'test-');
+            createLegendBadge(legendLayer, 165, 116, '?', 'test?');
+
+            // Row 4: Markers (y: 150)
+            createLegendDeceased(legendLayer, 18, 150, 'Deceased');
+            createLegendProband(legendLayer, 110, 150, 'Patient (Proband)');
+        }
+
+        function createLegendItem(parent, x, y, type, status, text) {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', `translate(${x}, ${y})`);
+
+            let shape;
+            let fill = status === 'affected' ? '#0f172a' : (status === 'carrier' ? 'url(#carrier-gradient)' : '#ffffff');
+            
+            if (type === 'male') {
+                shape = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                shape.setAttribute('x', -6);
+                shape.setAttribute('y', -6);
+                shape.setAttribute('width', 12);
+                shape.setAttribute('height', 12);
+            } else if (type === 'female') {
+                shape = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                shape.setAttribute('r', 6);
+            } else {
+                shape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                shape.setAttribute('points', '0,-7 7,0 0,7 -7,0');
+            }
+            shape.setAttribute('fill', fill);
+            shape.setAttribute('stroke', '#0f172a');
+            shape.setAttribute('stroke-width', '1.8');
+            g.appendChild(shape);
+
+            if (status === 'unknown') {
+                const q = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                q.setAttribute('y', 3.5);
+                q.setAttribute('font-size', '9');
+                q.setAttribute('font-weight', 'bold');
+                q.setAttribute('text-anchor', 'middle');
+                q.setAttribute('fill', '#0f172a');
+                q.textContent = '?';
+                g.appendChild(q);
+            }
+
+            const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            lbl.setAttribute('x', 12);
+            lbl.setAttribute('y', 3.5);
+            lbl.setAttribute('class', 'legend-text');
+            lbl.textContent = text;
+            g.appendChild(lbl);
+
+            parent.appendChild(g);
+        }
+
+        function createLegendBadge(parent, x, y, badge, text) {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', `translate(${x}, ${y})`);
+
+            const b = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            b.setAttribute('font-size', '13');
+            b.setAttribute('font-weight', 'bold');
+            b.setAttribute('fill', '#0f172a');
+            b.setAttribute('text-anchor', 'middle');
+            b.setAttribute('y', 4);
+            b.textContent = badge;
+            g.appendChild(b);
+
+            const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            lbl.setAttribute('x', 12);
+            lbl.setAttribute('y', 3.5);
+            lbl.setAttribute('class', 'legend-text');
+            lbl.textContent = text;
+            g.appendChild(lbl);
+
+            parent.appendChild(g);
+        }
+
+        function createLegendDeceased(parent, x, y, text) {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', `translate(${x}, ${y})`);
+
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', -6);
+            rect.setAttribute('y', -6);
+            rect.setAttribute('width', 12);
+            rect.setAttribute('height', 12);
+            rect.setAttribute('fill', '#fff');
+            rect.setAttribute('stroke', '#0f172a');
+            rect.setAttribute('stroke-width', '1.8');
+            g.appendChild(rect);
+
+            const slash = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            slash.setAttribute('x1', -7);
+            slash.setAttribute('y1', 7);
+            slash.setAttribute('x2', 7);
+            slash.setAttribute('y2', -7);
+            slash.setAttribute('stroke', '#0f172a');
+            slash.setAttribute('stroke-width', '1.8');
+            g.appendChild(slash);
+
+            const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            lbl.setAttribute('x', 12);
+            lbl.setAttribute('y', 3.5);
+            lbl.setAttribute('class', 'legend-text');
+            lbl.textContent = text;
+            g.appendChild(lbl);
+
+            parent.appendChild(g);
+        }
+
+        function createLegendProband(parent, x, y, text) {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('transform', `translate(${x}, ${y})`);
+
+            const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            arrow.setAttribute('d', 'M -6 6 L 4 -4 M 4 -4 L -1 -4 M 4 -4 L 4 1');
+            arrow.setAttribute('stroke', '#0f172a');
+            arrow.setAttribute('stroke-width', '2');
+            arrow.setAttribute('fill', 'none');
+            g.appendChild(arrow);
+
+            const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            lbl.setAttribute('x', 12);
+            lbl.setAttribute('y', 3.5);
+            lbl.setAttribute('class', 'legend-text');
+            lbl.textContent = text;
+            g.appendChild(lbl);
+
+            parent.appendChild(g);
+        }
+
+        function handleNodeClick(nodeId) {
+            if (!connectMode) {
+                selectNode(nodeId);
+                return;
+            }
+
+            if (connectMode === 'mate') {
+                if (!connectSourceId) {
+                    connectSourceId = nodeId;
+                    document.getElementById('connect-hint').innerText = "Now click 2nd partner.";
+                } else if (connectSourceId !== nodeId) {
+                    links.push({
+                        id: `rel_${connectSourceId}_${nodeId}`,
+                        type: 'mate',
+                        from: connectSourceId,
+                        to: nodeId
+                    });
+                    cancelConnectMode();
+                    render();
+                }
+            } else if (connectMode === 'child') {
+                if (connectSourceId) {
+                    links.push({
+                        id: `ch_${connectSourceId}_${nodeId}`,
+                        type: 'child',
+                        from: connectSourceId,
+                        to: nodeId
+                    });
+                    cancelConnectMode();
+                    render();
+                }
+            }
+        }
+
+        // Global Mouse Drag
+        window.addEventListener('mousemove', (e) => {
+            if (draggingNode) {
+                draggingNode.x = Math.round((e.clientX - dragOffset.x) / 10) * 10;
+                draggingNode.y = Math.round((e.clientY - dragOffset.y) / 10) * 10;
+                render();
+            } else if (isDraggingLegend) {
+                legendPos.x = Math.round((e.clientX - legendDragOffset.x) / 10) * 10;
+                legendPos.y = Math.round((e.clientY - legendDragOffset.y) / 10) * 10;
+                renderVectorLegend();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            draggingNode = null;
+            isDraggingLegend = false;
+        });
+
+        canvas.addEventListener('click', () => {
+            if (connectMode) cancelConnectMode();
+            else clearSelection();
+        });
+
+        // Snipping & Pixel-Perfect JPEG Screenshot
+        let isSnipping = false;
+        let snipStart = { x: 0, y: 0 };
+        let snipRect = { x: 0, y: 0, w: 0, h: 0 };
+        const snipOverlay = document.getElementById('snip-overlay');
+        const snipBox = document.getElementById('snip-box');
+        const snipControls = document.getElementById('snip-controls');
+        const snipDim = document.getElementById('snip-dim');
+        const btnSaveSnip = document.getElementById('btn-save-snip');
+
+        function startScreenshotMode() {
+            isSnipping = true;
+            snipOverlay.style.display = 'block';
+            snipControls.style.display = 'flex';
+            snipBox.style.display = 'none';
+            btnSaveSnip.style.display = 'none';
+            snipDim.innerText = "Drag across canvas to choose capture area";
+        }
+
+        function exitScreenshotMode() {
+            isSnipping = false;
+            snipOverlay.style.display = 'none';
+            snipControls.style.display = 'none';
+            snipBox.style.display = 'none';
+        }
+
+        snipOverlay.addEventListener('mousedown', (e) => {
+            const rect = workspace.getBoundingClientRect();
+            snipStart.x = e.clientX - rect.left + workspace.scrollLeft;
+            snipStart.y = e.clientY - rect.top + workspace.scrollTop;
+
+            snipBox.style.left = `${snipStart.x}px`;
+            snipBox.style.top = `${snipStart.y}px`;
+            snipBox.style.width = '0px';
+            snipBox.style.height = '0px';
+            snipBox.style.display = 'block';
+
+            function onMouseMove(ev) {
+                const currentX = ev.clientX - rect.left + workspace.scrollLeft;
+                const currentY = ev.clientY - rect.top + workspace.scrollTop;
+
+                snipRect.x = Math.min(snipStart.x, currentX);
+                snipRect.y = Math.min(snipStart.y, currentY);
+                snipRect.w = Math.abs(currentX - snipStart.x);
+                snipRect.h = Math.abs(currentY - snipStart.y);
+
+                snipBox.style.left = `${snipRect.x}px`;
+                snipBox.style.top = `${snipRect.y}px`;
+                snipBox.style.width = `${snipRect.w}px`;
+                snipBox.style.height = `${snipRect.h}px`;
+
+                snipDim.innerText = `Size: ${Math.round(snipRect.w)} × ${Math.round(snipRect.h)} px`;
+            }
+
+            function onMouseUp() {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+                if (snipRect.w > 30 && snipRect.h > 30) {
+                    btnSaveSnip.style.display = 'inline-flex';
+                }
+            }
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+
+        // 100% Visual Parity JPEG Exporter (Pure White Blank Background)
+        function downloadScreenshotJPEG() {
+            if (snipRect.w < 10 || snipRect.h < 10) return;
+
+            const scale = 2; // Crisp 2x Retina sampling
+            const svgData = new XMLSerializer().serializeToString(canvas);
+            const img = new Image();
+            const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+
+            img.onload = function () {
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = snipRect.w * scale;
+                exportCanvas.height = snipRect.h * scale;
+                const ctx = exportCanvas.getContext('2d');
+
+                // Solid pure white background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+                // Draw exact cropped region with pure white backing
+                ctx.drawImage(
+                    img,
+                    snipRect.x, snipRect.y, snipRect.w, snipRect.h,
+                    0, 0, snipRect.w * scale, snipRect.h * scale
+                );
+                URL.revokeObjectURL(url);
+
+                const a = document.createElement('a');
+                a.href = exportCanvas.toDataURL('image/jpeg', 0.96);
+                a.download = `pedigree-screenshot-${Math.round(snipRect.w)}x${Math.round(snipRect.h)}.jpg`;
+                a.click();
+                exitScreenshotMode();
+            };
+            img.src = url;
+        }
+
+        // LLM Modal Helpers
+        function openModal() { document.getElementById('modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        function copyPrompt() {
+            navigator.clipboard.writeText(document.getElementById('prompt-text').innerText).then(() => {
+                alert("Prompt copied to clipboard!");
+                closeModal();
+            });
+        }
+
+        // Export Vector SVG
+        function exportSVG() {
+            const svgData = new XMLSerializer().serializeToString(canvas);
+            const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `pedigree-chart-${Date.now()}.svg`;
+            link.click();
+        }
+
+        // Initialize App
+        initDefaultData();
+    </script>
+</body>
+</html>
